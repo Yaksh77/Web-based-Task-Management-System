@@ -1,0 +1,53 @@
+import { db } from '../config/db.js';
+import { users } from '../models/schema.js';
+import { eq } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+export const register = async (req, res) => {
+    const { name, email, password, role } = req.body;
+    try {
+        const userExists = await db.select().from(users).where(eq(users.email, email));
+        if (userExists.length > 0) return res.status(400).json({ message: "User already exists" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = await db.insert(users).values({
+            name,
+            email,
+            password: hashedPassword,
+            role: role || 'USER'
+        }).returning({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            createdAt: users.createdAt
+        });
+
+        res.status(201).json({ message: "User registered successfully", user: newUser[0] });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const login = async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const userFound = await db.select().from(users).where(eq(users.email, email));
+        if (userFound.length === 0) return res.status(404).json({ message: "User not found" });
+
+        const isMatch = await bcrypt.compare(password, userFound[0].password);
+        if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+        const token = jwt.sign(
+            { id: userFound[0].id, role: userFound[0].role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        res.json({ token, user: { id: userFound[0].id, name: userFound[0].name, role: userFound[0].role } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
