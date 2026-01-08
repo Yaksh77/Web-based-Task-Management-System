@@ -4,8 +4,9 @@ import dotenv from 'dotenv';
 import { db } from './config/db.js';
 import { sql } from 'drizzle-orm'; 
 import authRouter from './routes/auth.routes.js';
-import { verifyToken } from './middleware/auth.middleware.js';
 import userRouter from './routes/user.routes.js';
+import adminRouter from './routes/admin.routes.js';
+import morgan from 'morgan';
 dotenv.config();
 
 const app = express();
@@ -14,8 +15,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 app.use('/api/auth', authRouter);
-app.use('/api/user',verifyToken, userRouter);
+app.use('/api/user', userRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/health', (req, res) => {
   res.send('Welcome to the Task Management System API');

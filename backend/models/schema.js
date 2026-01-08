@@ -3,9 +3,10 @@ import {
   pgEnum, integer, primaryKey 
 } from 'drizzle-orm/pg-core';
 
+// Enums
 export const roleEnum = pgEnum('user_role', ['ADMIN', 'USER']);
-export const statusEnum = pgEnum('task_status', ['TODO', 'IN_PROGRESS', 'COMPLETED']);
-export const priorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH' ]);
+export const statusEnum = pgEnum('task_status', ['TODO', 'IN_PROGRESS', 'IN_TESTING', 'COMPLETED']);
+export const priorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH']);
 
 
 // Users Table
@@ -45,22 +46,26 @@ export const tasks = pgTable('tasks', {
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   description: text('description').notNull(),
+  taskId: integer('taskId')
+    .references(() => tasks.id, { onDelete: 'cascade' })
+    .notNull(),
   createdBy: integer('createdBy').references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('createdAt').defaultNow(),
   updatedAt: timestamp('updatedAt').defaultNow(),
 });
 
+// --- MAPPING TABLES ---
 
-// 1. Project -> User Mapping
+// 1. Project -> User 
 export const projectUserMapping = pgTable('project_user_mapping', {
   projectId: integer('projectId').references(() => projects.id, { onDelete: 'cascade' }),
   userId: integer('userId').references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('createdAt').defaultNow(),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.projectId, table.userId] }), // Composite Primary Key
+  pk: primaryKey({ columns: [table.projectId, table.userId] }),
 }));
 
-// 2. Project -> Task Mapping
+// 2. Project -> Task 
 export const projectTaskMapping = pgTable('project_task_mapping', {
   projectId: integer('projectId').references(() => projects.id, { onDelete: 'cascade' }),
   taskId: integer('taskId').references(() => tasks.id, { onDelete: 'cascade' }),
@@ -69,7 +74,7 @@ export const projectTaskMapping = pgTable('project_task_mapping', {
   pk: primaryKey({ columns: [table.projectId, table.taskId] }),
 }));
 
-// 3. User -> Task Mapping (Assignments)
+// 3. User -> Task 
 export const userTaskMapping = pgTable('user_task_mapping', {
   userId: integer('userId').references(() => users.id, { onDelete: 'cascade' }),
   taskId: integer('taskId').references(() => tasks.id, { onDelete: 'cascade' }),
@@ -78,16 +83,7 @@ export const userTaskMapping = pgTable('user_task_mapping', {
   pk: primaryKey({ columns: [table.userId, table.taskId] }),
 }));
 
-// 4. Task -> Comment Mapping
-export const taskCommentMapping = pgTable('task_comment_mapping', {
-  taskId: integer('taskId').references(() => tasks.id, { onDelete: 'cascade' }),
-  commentId: integer('commentId').references(() => comments.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('createdAt').defaultNow(),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.taskId, table.commentId] }),
-}));
-
-// --- 5. ACTIVITY LOGS ---
+// --- ACTIVITY LOGS ---
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   taskId: integer('taskId').references(() => tasks.id, { onDelete: 'cascade' }),
