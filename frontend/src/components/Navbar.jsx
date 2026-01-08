@@ -11,7 +11,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-blue-600 text-white px-6 py-4 shadow-md">
+    <nav className="bg-blue-600 text-white px-6 py-4 shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo / Brand */}
         <Link
