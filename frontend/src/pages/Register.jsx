@@ -5,7 +5,6 @@ import { LuEye, LuEyeOff } from "react-icons/lu";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // બીજા ફિલ્ડ માટે
   const [formData, setFormData] = useState({
     name: "",
     email: "",

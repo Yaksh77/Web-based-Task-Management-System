@@ -1,59 +1,42 @@
-import { Link, useNavigate } from "react-router-dom";
+import { LuMenu } from "react-icons/lu";
 import { useAuthStore } from "../store/userAuthStore";
-
-function Navbar() {
+import { Link } from "react-router-dom";
+function Navbar({ toggleSidebar }) {
   const user = useAuthStore((state) => state.user);
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    useAuthStore.getState().logout();
-    navigate("/login");
-  };
 
   return (
-    <nav className="bg-blue-600 text-white px-6 py-4 shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo / Brand */}
-        <Link
-          to="/"
-          className="text-xl font-bold hover:text-blue-200 transition"
-        >
-          Task Management System
-        </Link>
-
-        {/* User Section */}
-        {user ? (
-          <div className="flex items-center gap-4">
-            {/* User Avatar */}
-            <div
-              className="w-10 h-10 flex items-center justify-center bg-blue-800 rounded-full text-white font-bold text-lg hover:bg-blue-900 transition cursor-default"
-              title={user.name}
-            >
-              {user.name.slice(0, 1).toUpperCase()}
-            </div>
-
-            {/* Logout Button */}
+    <nav className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 sticky top-0 z-30">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {user && (
             <button
-              onClick={handleLogout}
-              className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-lg font-semibold transition"
+              onClick={toggleSidebar}
+              className="p-2 hover:bg-gray-100 rounded-lg lg:hidden text-gray-600"
             >
-              Logout
+              <LuMenu size={24} />
             </button>
-          </div>
-        ) : (
-          <div className="flex gap-4">
-            <Link
-              to="/login"
-              className="hover:text-blue-200 transition font-semibold"
-            >
-              Login
-            </Link>
-            <Link
-              to="/register"
-              className="hover:text-blue-200 transition font-semibold"
-            >
-              Register
-            </Link>
+          )}
+          <Link
+            to="/"
+            className="text-xl font-bold text-gray-800 hidden md:block"
+          >
+            Task Management System
+          </Link>
+        </div>
+
+        {user && (
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-sm font-bold text-gray-800 leading-none">
+                {user.name}
+              </p>
+              <p className="text-[10px] text-gray-500 uppercase mt-1">
+                {user.role}
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
           </div>
         )}
       </div>

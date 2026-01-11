@@ -1,4 +1,4 @@
-import { eq, not } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   tasks,
   userTaskMapping,
@@ -13,7 +13,6 @@ export const addTask = async (req, res) => {
   const {
     title,
     description,
-    status,
     priority,
     dueDate,
     createdBy,
@@ -28,7 +27,6 @@ export const addTask = async (req, res) => {
         .values({
           title,
           description,
-          status,
           priority,
           dueDate: dueDate ? new Date(dueDate) : null,
           createdBy,
@@ -90,14 +88,15 @@ export const deleteUser = async (req, res) => {
 
 export const getUserProjects = async (req, res) => {
   const { id: userId, role } = req.user;
+  const { currentProjectId } = req.query;
 
   try {
-    let assignedProjects;
+    let query;
 
     if (role === "ADMIN") {
-      assignedProjects = await db.select().from(projects);
+      query = db.select().from(projects);
     } else {
-      assignedProjects = await db
+      query = db
         .select({
           id: projects.id,
           title: projects.title,
@@ -111,6 +110,18 @@ export const getUserProjects = async (req, res) => {
         .where(eq(projectUserMapping.userId, Number(userId)));
     }
 
+    if (currentProjectId) {
+      query = query.orderBy(
+        sql`CASE WHEN ${projects.id} = ${Number(
+          currentProjectId
+        )} THEN 0 ELSE 1 END`,
+        projects.title
+      );
+    } else {
+      query = query.orderBy(projects.title);
+    }
+
+    const assignedProjects = await query;
     res.status(200).json({ projects: assignedProjects });
   } catch (error) {
     res
@@ -134,6 +145,7 @@ export const getMyTasks = async (req, res) => {
           description: tasks.description,
           dueDate: tasks.dueDate,
           projectName: projects.title,
+          projectId: projects.id,
         })
         .from(tasks)
         .leftJoin(projectTaskMapping, eq(tasks.id, projectTaskMapping.taskId))
@@ -145,8 +157,10 @@ export const getMyTasks = async (req, res) => {
           title: tasks.title,
           status: tasks.status,
           priority: tasks.priority,
+          description: tasks.description,
           dueDate: tasks.dueDate,
           projectName: projects.title,
+          projectId: projects.id,
         })
         .from(tasks)
         .innerJoin(userTaskMapping, eq(tasks.id, userTaskMapping.taskId))
@@ -164,11 +178,17 @@ export const getMyTasks = async (req, res) => {
 
 export const getProjectTasks = async (req, res) => {
   const { projectId } = req.params;
-  console.log(projectId);
 
   try {
     const projectTasks = await db
-      .select()
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        status: tasks.status,
+        priority: tasks.priority,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+      })
       .from(tasks)
       .innerJoin(projectTaskMapping, eq(tasks.id, projectTaskMapping.taskId))
       .where(eq(projectTaskMapping.projectId, Number(projectId)));
@@ -181,28 +201,64 @@ export const getProjectTasks = async (req, res) => {
 
 export const updateTask = async (req, res) => {
   const { taskId } = req.params;
-  const { title, description, status, priority, dueDate, assignedUserId, projectId } = req.body;
+  const {
+    title,
+    description,
+    status,
+    priority,
+    dueDate,
+    assignedUserId,
+    projectId,
+  } = req.body;
+
+  const STATUS_FLOW = {
+    TODO: "IN_PROGRESS",
+    IN_PROGRESS: "IN_TESTING",
+    IN_TESTING: "COMPLETED",
+  };
 
   try {
     await db.transaction(async (tx) => {
+      const [existingTask] = await tx
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, Number(taskId)));
+
+      // Validation for stauts changing that user only can go to the next one status or step
+      if (status !== undefined && status !== existingTask.status) {
+        if (STATUS_FLOW[existingTask.status] !== status) {
+          throw new Error(
+            `Invalid transition: From ${
+              existingTask.status
+            } you can only go to ${STATUS_FLOW[existingTask.status]}`
+          );
+        }
+      }
+
       const updateData = {};
       if (title !== undefined) updateData.title = title;
       if (description !== undefined) updateData.description = description;
       if (status !== undefined) updateData.status = status;
       if (priority !== undefined) updateData.priority = priority;
-      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+      if (dueDate !== undefined)
+        updateData.dueDate = dueDate ? new Date(dueDate) : null;
       updateData.updatedAt = new Date();
 
-      await tx.update(tasks).set(updateData).where(eq(tasks.id, Number(taskId)));
+      await tx
+        .update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, Number(taskId)));
 
       if (projectId !== undefined) {
-        await tx.update(projectTaskMapping)
+        await tx
+          .update(projectTaskMapping)
           .set({ projectId: Number(projectId) })
           .where(eq(projectTaskMapping.taskId, Number(taskId)));
       }
 
       if (assignedUserId !== undefined) {
-        await tx.update(userTaskMapping)
+        await tx
+          .update(userTaskMapping)
           .set({ userId: Number(assignedUserId) })
           .where(eq(userTaskMapping.taskId, Number(taskId)));
       }
@@ -214,3 +270,34 @@ export const updateTask = async (req, res) => {
   }
 };
 
+export const deleteTask = async (req, res) => {
+  const { taskId } = req.params;
+  try {
+    await db.delete(tasks).where(eq(tasks.id, Number(taskId)));
+    res.status(200).json({ message: "Task deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getProjectMembers = async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const projectMembers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+      })
+      .from(users)
+      .innerJoin(projectUserMapping, eq(users.id, projectUserMapping.userId))
+      .where(eq(projectUserMapping.projectId, Number(projectId)));
+    res.status(200).json({ projectMembers });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching project members",
+      error: error.message,
+    });
+  }
+};

@@ -1,8 +1,14 @@
 import { and, eq, inArray, not } from "drizzle-orm";
 import { db } from "../config/db.js";
 import { projects, projectUserMapping, users } from "../models/schema.js";
+import { validationResult } from "express-validator";
 
 export const createProject = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { title, description } = req.body;
   try {
     const newProject = await db.insert(projects).values({
@@ -20,7 +26,6 @@ export const createProject = async (req, res) => {
       .json({ message: "Error creating project", error: error.message });
   }
 };
-
 
 export const getAllProjects = async (req, res) => {
   try {
@@ -144,18 +149,21 @@ export const getProjectUsers = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-  const { role: requesterRole } = req.user; 
+  const { role: requesterRole } = req.user;
 
   try {
-    let query = db.select({
-      id: users.id,
-      name: users.name,
-      role: users.role,
-    }).from(users);
+    let query = db
+      .select({
+        id: users.id,
+        name: users.name,
+        role: users.role,
+        email: users.email,
+      })
+      .from(users);
 
     if (requesterRole === "USER") {
       query = query.where(eq(users.role, "USER"));
-    } 
+    }
 
     const filteredUsers = await query;
     res.status(200).json({ users: filteredUsers });
