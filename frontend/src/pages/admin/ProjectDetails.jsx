@@ -10,16 +10,19 @@ function ProjectDetails() {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [updatedProject, setUpdatedProject] = useState({ title: "", description: "" });
+  const [updatedProject, setUpdatedProject] = useState({
+    title: "",
+    description: "",
+  });
   const navigate = useNavigate();
 
- const fetchProjectInfo = async () => {
+  const fetchProjectInfo = async () => {
     try {
       const { data } = await api.get(`/admin/get-project-details/${projectId}`);
       setProject(data.project);
-      setUpdatedProject({ 
-        title: data.project.title, 
-        description: data.project.description 
+      setUpdatedProject({
+        title: data.project.title,
+        description: data.project.description,
       });
     } catch (error) {
       console.error("Error fetching project info:", error);
@@ -35,25 +38,23 @@ function ProjectDetails() {
     }
   };
 
-    const fetchProjectTasks = async () => {
-      try {
-        const {data} = await api.get(`/user/get-project-tasks/${projectId}`)
-        console.log(data.tasks);
-        
-      } catch (error) {
-        console.log(error);
-      }
+  const fetchProjectTasks = async () => {
+    try {
+      const { data } = await api.get(`/user/get-project-tasks/${projectId}`);
+      console.log(data.tasks);
+    } catch (error) {
+      console.log(error);
     }
-
+  };
 
   const handleUpdateProject = async (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setLoading(true);
     try {
       await api.patch(`/admin/update-project/${projectId}`, updatedProject);
       setIsModalOpen(false);
       alert("Project updated successfully!");
-      fetchProjectInfo(); 
+      fetchProjectInfo();
     } catch (error) {
       console.error("Error updating project:", error);
     } finally {
@@ -64,40 +65,41 @@ function ProjectDetails() {
   const handleDeleteProject = async () => {
     try {
       await api.delete(`/admin/delete-project/${projectId}`);
-      navigate('/admin/panel')
+      navigate("/admin/panel");
     } catch (error) {
       console.log(error);
     }
-  }
+  };
 
   const fetchUsers = async () => {
     try {
       const { data } = await api.get("/admin/get-all-users");
       console.log(data);
       setAllUsers(data.users || []);
-      
     } catch (err) {
       console.error("Failed to fetch users", err);
-    } 
-}
-    
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
-      fetchProjectInfo(); 
+      fetchProjectInfo();
       fetchProjectUsers(projectId);
       fetchUsers();
-      fetchProjectTasks()
+      fetchProjectTasks();
     }
-  }, [projectId]); 
+  }, [projectId]);
 
   const assignUserToProject = async (userId) => {
+    console.log(assignUser);
+
     try {
       const response = await api.post("/admin/assign-user", {
         userId,
         projectId,
       });
       console.log(response.data);
-      
+
       fetchProjectUsers(projectId);
     } catch (error) {
       console.error("Error assigning user to project:", error);
@@ -105,20 +107,20 @@ function ProjectDetails() {
   };
 
   return (
-    <div className="p-8 lg:ml-65 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-end gap-3">
-         <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                >
-                  <LuFileDiff size={20} /> Update Project
-                </button>
-         <button
-         onClick={handleDeleteProject}
-                  className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition"
-                >
-                  <LuMinus size={20} /> Delete Project
-                </button>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+        >
+          <LuFileDiff size={20} /> Update Project
+        </button>
+        <button
+          onClick={handleDeleteProject}
+          className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition"
+        >
+          <LuMinus size={20} /> Delete Project
+        </button>
       </div>
       <h1 className="text-3xl font-bold mb-2">{project?.title}</h1>
       <p className="text-gray-600 mb-8">{project?.description}</p>
@@ -145,17 +147,19 @@ function ProjectDetails() {
             {allUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
+                {console.log(u.id)}
               </option>
             ))}
           </select>
-          <button 
+          <button
             onClick={() => assignUserToProject(assignUser)}
-          className="bg-blue-600 text-white px-4 py-2 rounded">
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
             Assign
           </button>
         </div>
       </div>
-         {isModalOpen && (
+      {isModalOpen && (
         <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">
@@ -172,7 +176,10 @@ function ProjectDetails() {
                   placeholder="Enter project name"
                   value={updatedProject.title}
                   onChange={(e) =>
-                    setUpdatedProject({ ...updatedProject, title: e.target.value })
+                    setUpdatedProject({
+                      ...updatedProject,
+                      title: e.target.value,
+                    })
                   }
                   required
                 />

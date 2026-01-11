@@ -30,7 +30,7 @@ function AdminDashboard() {
       tempErrors.description = "Description is required.";
     }
     console.log(errors);
-    
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
@@ -80,7 +80,7 @@ function AdminDashboard() {
       </div>
 
       {/* Project Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:ml-60 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {projects.map((project) => (
           <div
             key={project.id}
@@ -88,11 +88,11 @@ function AdminDashboard() {
           >
             <div className="flex items-center gap-3 mb-3 text-blue-600">
               <LuFolderOpen size={24} />
-              <h3 className="text-xl font-semibold text-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 truncate">
                 {project.title}
               </h3>
             </div>
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+            <p className="text-gray-600 text-sm mb-4 truncate">
               {project.description || "No description provided."}
             </p>
             <div className="flex items-center text-gray-400 text-xs gap-1">

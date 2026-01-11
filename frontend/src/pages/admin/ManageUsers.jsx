@@ -31,17 +31,17 @@ function ManageUsers() {
       await api.delete(`/user/delete-user/${userId}`);
       console.log("User deleted successfully");
       handleFetchUsers();
-    }catch(err){
+    } catch (err) {
       console.log(err);
     }
-  }
+  };
 
   useEffect(() => {
     handleFetchUsers();
   }, []);
 
   return (
-    <div className="p-8 md:ml-60">
+    <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold mb-6">User Management</h2>
       </div>
