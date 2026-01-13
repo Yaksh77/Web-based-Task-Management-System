@@ -5,20 +5,35 @@ import {
   LuTrash,
   LuBadgeAlert,
   LuLock,
+  LuSearch,
 } from "react-icons/lu";
 import api from "../../../api";
 import { useAuthStore } from "../../store/userAuthStore";
+import TaskTable from "../../components/TaskTable";
+import TaskFilters from "../../components/TaskFilters";
+import Pagination from "../../components/Pagination";
+import toast from "react-hot-toast";
 
 function MyTasks() {
   const user = useAuthStore((state) => state.user);
   const [isCreatedModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [originalStatus, setOriginalStatus] = useState("");
   const [projects, setProjects] = useState([]);
   const [errors, setErrors] = useState({});
   const [projectMembers, setProjectMembers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    status: "ALL",
+    priority: "ALL",
+    sortBy: "createdAt",
+    sortOrder: "desc",
+    dateType: "createdAt",
+  });
 
   const today = new Date().toISOString().split("T")[0];
   const statusOptions = ["TODO", "IN_PROGRESS", "IN_TESTING", "COMPLETED"];
@@ -71,20 +86,32 @@ function MyTasks() {
   };
 
   const fetchMyTasks = async () => {
+    setLoading(true);
     try {
-      const { data } = await api.get("/user/get-my-tasks");
-      console.log(data);
-
+      const { data } = await api.get("/user/get-my-tasks", {
+        params: {
+          page: currentPage,
+          limit: 3,
+          ...filters,
+          search: searchTerm,
+        },
+      });
       setTasks(data.tasks);
+      setTotalPages(data.pagination.totalPages);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchProjects();
-    fetchMyTasks();
   }, []);
+
+  useEffect(() => {
+    fetchMyTasks();
+  }, [currentPage, filters, searchTerm]);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -97,7 +124,8 @@ function MyTasks() {
         createdBy: user.id,
         assignedUserId: formData.assignedUserId || user.id,
       };
-      await api.post("/user/add-task", payload);
+      const response = await api.post("/user/add-task", payload);
+      if (response) toast.success("Task created successfully!");
       setIsCreateModalOpen(false);
       fetchMyTasks();
       setFormData({
@@ -111,6 +139,7 @@ function MyTasks() {
       });
     } catch (err) {
       console.error(err);
+      toast.error("Failed to create task. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -148,25 +177,27 @@ function MyTasks() {
 
     setLoading(true);
     try {
-      await api.put(`/user/update-task/${editFormData.id}`, editFormData);
+      const response = await api.put(`/user/update-task/${editFormData.id}`, editFormData);
+      if (response) toast.success("Task updated successfully!");
       setIsEditModalOpen(false);
       fetchMyTasks();
     } catch (error) {
       console.error(error);
+      toast.error("Failed to update task. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (window.confirm("Are you sure you want to delete this task?")) {
       try {
-        await api.delete(`/user/delete-task/${taskId}`);
+      const response = await api.delete(`/user/delete-task/${taskId}`);
+      if (response) toast.success("Task deleted successfully!");
         fetchMyTasks();
       } catch (error) {
         console.error(error);
+        toast.error("Failed to delete task. Please try again.");
       }
-    }
   };
 
   const handleChange = (e) => {
@@ -218,116 +249,36 @@ function MyTasks() {
         </button>
       </div>
 
-      {/* Task List Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 border-b border-gray-100">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Task & Project
-                </th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Due Date
-                </th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {tasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className={`
-                     ${
-                       task.status === "OVERDUE"
-                         ? "hover:bg-red-100 bg-red-50 rounded-lg"
-                         : ""
-                     }
-                    `}
-                >
-                  <td className="p-4">
-                    <div className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
-                      {task.title}
-                    </div>
-                    <div className="text-xs text-blue-500 font-medium uppercase mt-0.5 tracking-tight">
-                      {task.projectName || "General"}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`bg-gray-50 text-gray-600 border border-gray-100 px-3 py-1 rounded-full text-xs font-bold`}
-                    >
-                      {task.priority}
-                    </span>
-                  </td>
-                  <td className="p-4 text-sm text-gray-600 font-medium italic">
-                    {task.dueDate
-                      ? new Date(task.dueDate).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "No deadline"}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-bold   ${
-                        task.status === "OVERDUE"
-                          ? "text-red-700 bg-red-200 border-red-200"
-                          : task.status === "COMPLETED"
-                          ? "text-green-700 bg-green-200 border-green-200"
-                          : ""
-                      }`}
-                    >
-                      {task.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className={`p-4 flex gap-3 items-center`}>
-                    {task.status === "OVERDUE" ||
-                    task.status === "COMPLETED" ? (
-                      <span
-                        className="p-2 text-gray-500"
-                        title="Locked: Overdue tasks cannot be edited"
-                      >
-                        <LuLock size={18} className="text-gray-500" />{" "}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => openEditModal(task)}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <LuPencil size={18} />
-                      </button>
-                    )}
+      {/* Filters */}
+      <TaskFilters
+        filters={filters}
+        setFilters={setFilters}
+        setSearchTerm={setSearchTerm}
+      />
 
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete"
-                    >
-                      <LuTrash size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {tasks.length === 0 && (
-            <div className="p-10 text-center text-gray-400 font-medium">
-              No tasks found. Start by creating one!
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Task List Table */}
+      <TaskTable
+        tasks={tasks}
+        onEdit={openEditModal}
+        onDelete={handleDeleteTask}
+        visibleColumns={[
+          "title",
+          "priority",
+          "dueDate",
+          "status",
+          "createdBy",
+          "assignedTo",
+          "actions",
+          "viewDetails",
+          "details",
+        ]}
+      />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
 
       {/* Reusable Modal */}
       {(isCreatedModalOpen || isEditModalOpen) && (

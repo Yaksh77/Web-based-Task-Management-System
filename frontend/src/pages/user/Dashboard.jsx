@@ -1,10 +1,8 @@
 import React from "react";
-import { useAuthStore } from "../../store/userAuthStore";
 import api from "../../../api";
 import { useEffect } from "react";
 import { useState } from "react";
-import { LuArrowRight, LuFolder } from "react-icons/lu";
-import { useNavigate } from "react-router-dom";
+import ProjectCard from "../../components/ProjectCard";
 function Dashboard() {
   const [myProjects, setMyProjects] = useState([]);
 
@@ -34,20 +32,7 @@ function Dashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {myProjects.map((project) => (
-            <div
-              key={project.id}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition"
-            >
-              <div className="flex items-center gap-3 mb-4 text-blue-600">
-                <LuFolder size={24} />
-                <h3 className="text-xl font-semibold text-gray-800 truncate">
-                  {project.title}
-                </h3>
-              </div>
-              <p className="text-gray-600 text-sm mb-6 line-clamp-2">
-                {project.description}
-              </p>
-            </div>
+            <ProjectCard key={project.id} project={project} />
           ))}
         </div>
       )}

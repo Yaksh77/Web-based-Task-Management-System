@@ -10,11 +10,15 @@ import ManageUsers from "./pages/admin/ManageUsers";
 import ProjectDetails from "./pages/admin/ProjectDetails";
 import MainLayout from "./components/MainLayout";
 import MyTasks from "./pages/user/MyTasks";
+import TaskDetails from "./pages/user/TaskDetails";
+import ProjectTasks from "./pages/user/ProjectTasks";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const user = useAuthStore((state) => state.user);
   return (
     <MainLayout>
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route
           path="/"
@@ -26,6 +30,8 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["ADMIN", "USER"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/my-tasks" element={<MyTasks />} />
+          <Route path="/tasks/:taskId" element={<TaskDetails />} />
+          <Route path="/projects/:projectId/tasks" element={<ProjectTasks />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
