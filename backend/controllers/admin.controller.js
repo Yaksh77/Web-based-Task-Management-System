@@ -1,6 +1,6 @@
-import { and, eq, inArray, not } from "drizzle-orm";
+import { and, count, eq, inArray, not } from "drizzle-orm";
 import { db } from "../config/db.js";
-import { projects, projectUserMapping, users } from "../models/schema.js";
+import { activityLogs, projects, projectTaskMapping, projectUserMapping, tasks, users, userTaskMapping } from "../models/schema.js";
 import { validationResult } from "express-validator";
 
 export const createProject = async (req, res) => {
@@ -29,8 +29,30 @@ export const createProject = async (req, res) => {
 
 export const getAllProjects = async (req, res) => {
   try {
-    const allProjects = await db.select().from(projects);
-    res.status(200).json({ projects: allProjects });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 1;
+    const offset = (page - 1) * limit;
+
+    const [allProjects, totalCountResult] = await Promise.all([
+      db.select()
+        .from(projects)
+        .limit(limit)
+        .offset(offset),
+      db.select({ value: count() }).from(projects)
+    ]);
+
+    const totalProjects = totalCountResult[0].value;
+    const totalPages = Math.ceil(totalProjects / limit);
+
+    res.status(200).json({ 
+      projects: allProjects,
+      pagination: {
+        totalProjects,
+        currentPage: page,
+        totalPages,
+        limit
+      }
+    });
   } catch (error) {
     res
       .status(500)
@@ -105,13 +127,32 @@ export const updateProject = async (req, res) => {
 
 export const deleteProject = async (req, res) => {
   const { projectId } = req.params;
+
   try {
-    await db.delete(projects).where(eq(projects.id, Number(projectId)));
-    res.status(200).json({ message: "Project deleted successfully" });
+    await db.transaction(async (tx) => {
+      const associatedTasks = await tx
+        .select({ taskId: projectTaskMapping.taskId })
+        .from(projectTaskMapping)
+        .where(eq(projectTaskMapping.projectId, Number(projectId)));
+
+      const taskIds = associatedTasks.map((t) => t.taskId);
+
+      if (taskIds.length > 0) {
+       
+        await tx.delete(userTaskMapping).where(inArray(userTaskMapping.taskId, taskIds));
+        await tx.delete(projectTaskMapping).where(inArray(projectTaskMapping.taskId, taskIds));
+        await tx.delete(activityLogs).where(inArray(activityLogs.taskId, taskIds));
+
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      await tx.delete(projects).where(eq(projects.id, Number(projectId)));
+    });
+
+    res.status(200).json({ message: "Project and all associated tasks deleted successfully" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error deleting project", error: error.message });
+    console.error("Delete Error:", error);
+    res.status(500).json({ message: "Error deleting project", error: error.message });
   }
 };
 
@@ -149,25 +190,88 @@ export const getProjectUsers = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-  const { role: requesterRole } = req.user;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 100; 
+  const offset = (page - 1) * limit;
 
   try {
-    let query = db
-      .select({
-        id: users.id,
-        name: users.name,
-        role: users.role,
-        email: users.email,
-      })
-      .from(users);
+    const [allUsers, totalCountResult] = await db.transaction(async (tx) => {
+      const usersData = await tx
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .limit(limit)
+        .offset(offset);
 
-    if (requesterRole === "USER") {
-      query = query.where(eq(users.role, "USER"));
-    }
+      const countRes = await tx.select({ value: count() }).from(users);
+      return [usersData, countRes];
+    });
 
-    const filteredUsers = await query;
-    res.status(200).json({ users: filteredUsers });
+    const totalUsers = totalCountResult[0].value;
+
+    res.status(200).json({
+      users: allUsers,
+      pagination: {
+        totalUsers,
+        currentPage: page,
+        totalPages: Math.ceil(totalUsers / limit),
+        limit,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Access Denied / Error fetching users" });
+    console.error(error);
+    res.status(500).json({ message: "Error fetching users" });
+  }
+};
+
+
+export const removeUserFromProject = async (req, res) => {
+  const { projectId, userId } = req.params;
+  const pId = Number(projectId);
+  const uId = Number(userId);
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(projectUserMapping)
+        .where(
+          and(
+            eq(projectUserMapping.projectId, pId),
+            eq(projectUserMapping.userId, uId)
+          )
+        );
+
+      const projectTasks = await tx
+        .select({ taskId: projectTaskMapping.taskId })
+        .from(projectTaskMapping)
+        .where(eq(projectTaskMapping.projectId, pId));
+
+      const taskIds = projectTasks.map((t) => t.taskId);
+
+      if (taskIds.length > 0) {
+        await tx
+          .delete(userTaskMapping)
+          .where(
+            and(
+              eq(userTaskMapping.userId, uId),
+              inArray(userTaskMapping.taskId, taskIds)
+            )
+          );
+      }
+    });
+
+    res.status(200).json({ 
+      message: "User removed from project and their task assignments cleared." 
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error removing user and tasks",
+      error: error.message,
+    });
   }
 };

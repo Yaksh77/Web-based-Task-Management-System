@@ -8,6 +8,7 @@ import {
   getAllUsers,
   getProjectDetails,
   getProjectUsers,
+  removeUserFromProject,
   updateProject,
 } from "../controllers/admin.controller.js";
 import { createAndUpdateProjectValidation } from "../middleware/validations.middleware.js";
@@ -47,6 +48,12 @@ adminRouter.delete(
   verifyToken,
   isAdmin,
   deleteProject
+);
+adminRouter.delete(
+  "/remove-user/:projectId/:userId",
+  verifyToken,
+  isAdmin,
+  removeUserFromProject
 );
 adminRouter.get("/get-all-users", verifyToken, getAllUsers);
 

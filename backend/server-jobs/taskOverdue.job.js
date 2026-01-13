@@ -4,7 +4,7 @@ import { tasks } from "../models/schema.js";
 import cron from "node-cron";
 
 export const taskOverdueJob = () => {
-  cron.schedule("* 1 * * *", async () => {
+  cron.schedule("* 12 * * *", async () => {
     console.log("Job for searching overdue tasks is started...");
     try {
       const today = new Date();

@@ -1,7 +1,9 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../../../api";
-import { LuFileDiff, LuMinus, LuPlus, LuUpload } from "react-icons/lu";
+import { LuFileDiff, LuMinus, LuPlus, LuTrash, LuUpload } from "react-icons/lu";
+import ConfirmDelete from "../../components/ConfirmDelete";
+import toast from "react-hot-toast";
 function ProjectDetails() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -10,6 +12,7 @@ function ProjectDetails() {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [updatedProject, setUpdatedProject] = useState({
     title: "",
     description: "",
@@ -51,12 +54,16 @@ function ProjectDetails() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.patch(`/admin/update-project/${projectId}`, updatedProject);
+      const response = await api.patch(
+        `/admin/update-project/${projectId}`,
+        updatedProject
+      );
+      if (response) toast("Project updated successfully!");
       setIsModalOpen(false);
-      alert("Project updated successfully!");
       fetchProjectInfo();
     } catch (error) {
       console.error("Error updating project:", error);
+      toast.error("Failed to update project. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -64,16 +71,18 @@ function ProjectDetails() {
 
   const handleDeleteProject = async () => {
     try {
-      await api.delete(`/admin/delete-project/${projectId}`);
+      const response = await api.delete(`/admin/delete-project/${projectId}`);
+      if (response) toast("Project deleted successfully!");
       navigate("/admin/panel");
     } catch (error) {
       console.log(error);
+      toast.error("Failed to delete project. Please try again.");
     }
   };
 
   const fetchUsers = async () => {
     try {
-      const { data } = await api.get("/admin/get-all-users");
+      const { data } = await api.get("/admin/get-all-users?limit=100");
       console.log(data);
       setAllUsers(data.users || []);
     } catch (err) {
@@ -106,6 +115,20 @@ function ProjectDetails() {
     }
   };
 
+  const handleRemoveMember = async (memberToRemove) => {
+    console.log(memberToRemove.id);
+    
+    try {
+      const response = await api.delete(`/admin/remove-user/${projectId}/${memberToRemove.id}`);
+      console.log(response.data);
+      if (response) toast.success("Member removed successfully!");
+      fetchProjectUsers(projectId);
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member. Please try again.");
+    }
+  };
+
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-end gap-3">
@@ -116,7 +139,7 @@ function ProjectDetails() {
           <LuFileDiff size={20} /> Update Project
         </button>
         <button
-          onClick={handleDeleteProject}
+          onClick={() => setDeleteModalOpen(true)}
           className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition"
         >
           <LuMinus size={20} /> Delete Project
@@ -130,8 +153,17 @@ function ProjectDetails() {
           <h2 className="text-xl font-semibold mb-4">Project Members</h2>
           <ul>
             {members?.map((member) => (
-              <li key={member.id} className="py-2 border-b">
-                {member.name}
+              <li
+                key={member.id}
+                className="py-2 border-b border-gray-300 flex justify-between items-center"
+              >
+                <p>{member.name}</p>
+                <button
+                  onClick={() => handleRemoveMember(member)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <LuTrash size={16} />
+                </button>
               </li>
             ))}
           </ul>
@@ -159,6 +191,7 @@ function ProjectDetails() {
           </button>
         </div>
       </div>
+
       {isModalOpen && (
         <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
@@ -219,6 +252,14 @@ function ProjectDetails() {
             </form>
           </div>
         </div>
+      )}
+      {deleteModalOpen && (
+        <ConfirmDelete
+          deleteModalOpen={deleteModalOpen}
+          setDeleteModalOpen={setDeleteModalOpen}
+          onConfirmDelete={handleDeleteProject}
+          onCancel={() => setDeleteModalOpen(false)}
+        />
       )}
     </div>
   );

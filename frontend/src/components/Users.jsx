@@ -1,63 +1,12 @@
-import React, { useState } from "react";
-import { useEffect } from "react";
-import api from "../../../api";
-import { useAuthStore } from "../../store/userAuthStore";
-import Users from "../../components/Users";
-import Pagination from "../../components/Pagination";
+import React, { useState } from 'react'
+import Pagination from './Pagination';
 
-function ManageUsers() {
-  const [allUsers, setAllUsers] = useState([]);
-  const user = useAuthStore((state) => state.user);
-      const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    
+function Users({allUsers , user, handleChangeUserRole, handleDeleteUser}) {
 
 
-  const handleFetchUsers = async () => {
-    try {
-      const { data } = await api.get("/admin/get-all-users",{
-        params: {
-          page: currentPage,
-          limit: 2,
-        },
-      });
-      console.log(data);
-      setAllUsers(data.users || []);
-      setTotalPages(data.pagination.totalPages);
-    } catch (err) {
-      console.error("Failed to fetch users", err);
-    }
-  };
-  const handleChangeUserRole = async (userId, newRole) => {
-    try {
-      await api.patch("/user/update-role", { userId, newRole });
-      console.log("Role updated successfully");
-      handleFetchUsers();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    try {
-      await api.delete(`/user/delete-user/${userId}`);
-      console.log("User deleted successfully");
-      handleFetchUsers();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  useEffect(() => {
-    handleFetchUsers();
-  }, [currentPage]);
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold mb-6">User Management</h2>
-      </div>
-      {/* <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="min-w-full table-auto">
           <thead>
             <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-600">
@@ -137,22 +86,8 @@ function ManageUsers() {
             })}
           </tbody>
         </table>
-      </div> */}
-
-      <Users
-        allUsers={allUsers}
-        user={user}
-        handleChangeUserRole={handleChangeUserRole}
-        handleDeleteUser={handleDeleteUser}
-      />
-
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={(page) => setCurrentPage(page)}
-      />
-    </div>
-  );
+      </div>
+  )
 }
 
-export default ManageUsers;
+export default Users

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import api from "../../../api";
 import { LuPlus, LuFolderOpen, LuCalendar, LuUsers } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
+import Pagination from "../../components/Pagination";
+import ProjectCard from "../../components/ProjectCard";
+import toast from "react-hot-toast";
 
 function AdminDashboard() {
   const [projects, setProjects] = useState([]);
@@ -9,7 +12,8 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({ title: "", description: "" });
-  const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,17 +39,26 @@ function AdminDashboard() {
     return Object.keys(tempErrors).length === 0;
   };
   const fetchProjects = async () => {
+    setLoading(true);
     try {
-      const { data } = await api.get("/admin/get-all-projects");
+      const { data } = await api.get("/admin/get-all-projects", {
+        params: {
+          page: currentPage,
+          limit: 8,
+        },
+      });
       setProjects(data.projects);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Error fetching projects", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [currentPage]);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -54,12 +67,18 @@ function AdminDashboard() {
     }
     setLoading(true);
     try {
-      await api.post("/admin/create-project", formData);
+      const response = await api.post("/admin/create-project", formData);
+      console.log(response);
+      
+      if (response) {
+        toast.success("Project created successfully!");
+      }
       setIsModalOpen(false);
       setFormData({ title: "", description: "" });
       fetchProjects();
     } catch (err) {
       console.log(err);
+      toast.error("Failed to create project. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -82,34 +101,15 @@ function AdminDashboard() {
       {/* Project Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {projects.map((project) => (
-          <div
-            key={project.id}
-            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition space-y-4"
-          >
-            <div className="flex items-center gap-3 mb-3 text-blue-600">
-              <LuFolderOpen size={24} />
-              <h3 className="text-xl font-semibold text-gray-800 truncate">
-                {project.title}
-              </h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4 truncate">
-              {project.description || "No description provided."}
-            </p>
-            <div className="flex items-center text-gray-400 text-xs gap-1">
-              <LuCalendar size={14} />
-              <span>
-                Created on: {new Date(project.createdAt).toLocaleDateString()}
-              </span>
-            </div>
-            <button
-              onClick={() => navigate(`/admin/project-details/${project.id}`)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              View Details
-            </button>
-          </div>
+          <ProjectCard key={project.id} project={project} />
         ))}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
 
       {/* --- Create Project Modal --- */}
       {isModalOpen && (
