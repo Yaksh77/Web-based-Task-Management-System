@@ -11,16 +11,15 @@ function MainLayout({ children }) {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="flex bg-gray-50 min-h-screen relative">
+    <div className="flex bg-slate-50 min-h-screen relative text-slate-900">
       {user && <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
-
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
           user ? "lg:ml-64" : "ml-0"
         }`}
       >
         <Navbar toggleSidebar={toggleSidebar} />
-        <main className="p-4 md:p-6">{children}</main>
+        <main className="p-4 md:p-8 max-w-7xl mx-auto w-full">{children}</main>
       </div>
     </div>
   );

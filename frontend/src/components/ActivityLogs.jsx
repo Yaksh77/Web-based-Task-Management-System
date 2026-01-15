@@ -73,18 +73,18 @@ import { LuCalendar, LuCheckCheck, LuFlag, LuHistory, LuMessageSquare, LuPlus, L
 function ActivityLogs({logs}) {
 
   return (
-     <div className="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+     <div className="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-h-[400px]">
             <h3 className="text-xl font-bold mb-8 text-gray-800 flex items-center gap-2">
               <LuHistory className="text-gray-400" /> Task Activity
             </h3>
     
-            <div className="relative space-y-6">
-              <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-100"></div>
+            <div className="space-y-6 overflow-y-auto max-h-[300px] pr-2">
+              {/* <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-100"></div> */}
     
               {logs?.map((log) => {
                 const { color, bg, icon } = getLogStyles(log.action);
                 return (
-                  <div key={log.id} className="relative flex gap-4 group">
+                  <div key={log.id} className="flex gap-4 group">
                     <div
                       className={`relative z-10 w-10 h-10 rounded-full ${bg} ${color} flex items-center justify-center border-4 border-white shadow-sm transition-transform group-hover:scale-110`}
                     >
@@ -95,7 +95,7 @@ function ActivityLogs({logs}) {
                       <div className="flex justify-between items-start">
                         <p className="text-sm text-gray-800 leading-tight">
                           <span className="font-bold text-gray-900">
-                            {log.userName}
+                            {log?.userName ?? "-"}
                           </span>{" "}
                           <span className="text-gray-600">{log.action}</span>
                         </p>

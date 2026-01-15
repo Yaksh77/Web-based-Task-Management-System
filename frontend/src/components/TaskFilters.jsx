@@ -26,7 +26,7 @@ function TaskFilters({ filters, setFilters, setSearchTerm }) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           placeholder="Search title or project..."
         />
       </div>
@@ -41,6 +41,7 @@ function TaskFilters({ filters, setFilters, setSearchTerm }) {
         <option value="ALL">All Status</option>
         <option value="TODO">To Do</option>
         <option value="IN_PROGRESS">In Progress</option>
+        <option value="IN_TESTING">In Testing</option>
         <option value="COMPLETED">Completed</option>
         <option value="OVERDUE">Overdue</option>
       </select>

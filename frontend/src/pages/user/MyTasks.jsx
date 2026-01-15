@@ -125,7 +125,7 @@ function MyTasks() {
         assignedUserId: formData.assignedUserId || user.id,
       };
       const response = await api.post("/user/add-task", payload);
-      if (response) toast.success("Task created successfully!");
+      if (response.status === 201) toast.success("Task created successfully!");
       setIsCreateModalOpen(false);
       fetchMyTasks();
       setFormData({
@@ -174,11 +174,13 @@ function MyTasks() {
   const handleUpdateTask = async (e) => {
     e.preventDefault();
     if (!validate(editFormData)) return;
-
     setLoading(true);
     try {
-      const response = await api.put(`/user/update-task/${editFormData.id}`, editFormData);
-      if (response) toast.success("Task updated successfully!");
+      const response = await api.put(
+        `/user/update-task/${editFormData.id}`,
+        editFormData
+      );
+      if (response.status === 200) toast.success("Task updated successfully!");
       setIsEditModalOpen(false);
       fetchMyTasks();
     } catch (error) {
@@ -190,14 +192,14 @@ function MyTasks() {
   };
 
   const handleDeleteTask = async (taskId) => {
-      try {
+    try {
       const response = await api.delete(`/user/delete-task/${taskId}`);
-      if (response) toast.success("Task deleted successfully!");
-        fetchMyTasks();
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to delete task. Please try again.");
-      }
+      if (response.status === 200) toast.success("Task deleted successfully!");
+      fetchMyTasks();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete task. Please try again.");
+    }
   };
 
   const handleChange = (e) => {
@@ -218,8 +220,6 @@ function MyTasks() {
           // whenever the user selects the project in edit modal the members of only that will be fetched
           // beacuse every project has different members
           const { data } = await api.get(`/user/project-members/${pId}`);
-          console.log(data);
-
           setProjectMembers(data.projectMembers);
         } catch (err) {
           console.error("Error fetching members", err);
@@ -233,20 +233,35 @@ function MyTasks() {
     <div className="p-4 md:p-8 min-h-screen bg-gray-50">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900">My Tasks</h1>
+          {user.role === "ADMIN" ? (
+            <h1 className="text-2xl font-bold text-gray-800">
+              Task Management Panel
+            </h1>
+          ) : (
+            <h1 className="text-2xl font-bold text-gray-800">My Tasks</h1>
+          )}
           <p className="text-gray-500 mt-1">
             Manage and track your project responsibilities
           </p>
         </div>
-        <button
-          onClick={() => {
-            setErrors({});
-            setIsCreateModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-200 transition-all active:scale-95"
-        >
-          <LuPlus size={20} /> Create New Task
-        </button>
+        {user.role === "USER" && projects.length === 0 ? (
+          <button
+            disabled
+            className="bg-gray-300 text-gray-600 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition-all cursor-not-allowed"
+          >
+            <LuLock size={20} /> Create New Task
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setErrors({});
+              setIsCreateModalOpen(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all active:scale-95"
+          >
+            <LuPlus size={20} /> Create New Task
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -283,12 +298,12 @@ function MyTasks() {
       {/* Reusable Modal */}
       {(isCreatedModalOpen || isEditModalOpen) && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl h-full max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl h-full max-h-[80vh] overflow-y-auto no-scrollbar">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
               {isEditModalOpen ? (
-                <LuPencil className="text-blue-600" />
+                <LuPencil className="text-indigo-600" />
               ) : (
-                <LuPlus className="text-blue-600" />
+                <LuPlus className="text-indigo-600" />
               )}
               {isEditModalOpen ? "Edit Task Details" : "Create New Task"}
             </h2>
@@ -317,7 +332,7 @@ function MyTasks() {
                         })
                       : handleChange(e)
                   }
-                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
                     errors.projectId
                       ? "border-red-400 ring-1 ring-red-100"
                       : "border-gray-200"
@@ -358,7 +373,7 @@ function MyTasks() {
                         })
                       : handleChange(e)
                   }
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 >
                   <option value={user.id}>Myself</option>
                   {projectMembers
@@ -389,7 +404,7 @@ function MyTasks() {
                         })
                       : handleChange(e)
                   }
-                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
                     errors.title ? "border-red-400" : "border-gray-200"
                   }`}
                 />
@@ -423,7 +438,7 @@ function MyTasks() {
                         })
                       : handleChange(e)
                   }
-                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                  className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
                     errors.description ? "border-red-400" : "border-gray-200"
                   }`}
                 />
@@ -445,7 +460,7 @@ function MyTasks() {
                           status: e.target.value,
                         })
                       }
-                      className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       {statusOptions.map((optValue) => {
                         const isCurrent = optValue === originalStatus;
@@ -483,7 +498,7 @@ function MyTasks() {
                           })
                         : handleChange(e)
                     }
-                    className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="HIGH">High</option>
                     <option value="MEDIUM">Medium</option>
@@ -509,7 +524,7 @@ function MyTasks() {
                           })
                         : handleChange(e)
                     }
-                    className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                    className={`w-full mt-1.5 p-3 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
                       errors.dueDate ? "border-red-400" : "border-gray-200"
                     }`}
                   />
@@ -531,7 +546,7 @@ function MyTasks() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 font-bold disabled:opacity-50 transition-all active:scale-95 cursor-pointer"
+                  className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 font-bold disabled:opacity-50 transition-all active:scale-95 cursor-pointer"
                 >
                   {loading
                     ? "Processing..."

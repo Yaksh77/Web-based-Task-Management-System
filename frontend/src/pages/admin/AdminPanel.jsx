@@ -68,9 +68,7 @@ function AdminDashboard() {
     setLoading(true);
     try {
       const response = await api.post("/admin/create-project", formData);
-      console.log(response);
-      
-      if (response) {
+      if (response.status === 201) {
         toast.success("Project created successfully!");
       }
       setIsModalOpen(false);
@@ -88,11 +86,11 @@ function AdminDashboard() {
     <div className="p-8 bg-gray-50 min-h-screen space-y-9">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Admin Projects</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Manage Projects</h1>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
         >
           <LuPlus size={20} /> Create Project
         </button>
@@ -129,7 +127,7 @@ function AdminDashboard() {
                   className={`w-full p-3 border rounded-lg outline-none transition ${
                     errors.title
                       ? "border-red-500 focus:ring-red-200"
-                      : "focus:ring-blue-400 focus:border-blue-400"
+                      : "focus:ring-indigo-400 focus:border-indigo-400"
                   }`}
                   placeholder="Enter project name"
                   value={formData.title}
@@ -150,7 +148,7 @@ function AdminDashboard() {
                   className={`w-full p-3 border rounded-lg outline-none transition ${
                     errors.description
                       ? "border-red-500 focus:ring-red-200"
-                      : "focus:ring-blue-400 focus:border-blue-400"
+                      : "focus:ring-indigo-400 focus:border-indigo-400"
                   }`}
                   placeholder="What is this project about?"
                   value={formData.description}
@@ -173,7 +171,7 @@ function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {loading ? "Creating..." : "Create"}
                 </button>

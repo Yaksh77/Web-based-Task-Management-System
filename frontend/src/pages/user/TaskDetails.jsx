@@ -1,20 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../../api";
-import {
-  LuMessageSquare,
-  LuSend,
-  LuTrash,
-  LuPencil,
-  LuRefreshCw,
-  LuFlag,
-  LuUserPlus,
-  LuCheckCheck,
-  LuHistory,
-  LuTrash2,
-  LuPlus,
-  LuCalendar
-} from "react-icons/lu";
 import { useAuthStore } from "../../store/userAuthStore";
 import ActivityLogs from "../../components/ActivityLogs";
 import TaskComments from "../../components/TaskComments";
@@ -30,15 +16,11 @@ function TaskDetails() {
   const [editedComment, setEditedComment] = useState("");
 
   const fetchDetails = async () => {
-    // console.log('Hello World');
-
     try {
       const { data } = await api.get(`/user/task/${taskId}`);
-      console.log(data);
-
       setData(data.task);
       setComments(data.taskComments);
-        setLogs(data.logs)
+      setLogs(data.logs);
     } catch (err) {
       console.error(err);
     }
@@ -47,8 +29,6 @@ function TaskDetails() {
   const handleDeleteComment = async (commentId) => {
     try {
       const result = await api.delete(`/user/delete-comment/${commentId}`);
-      console.log(result.message);
-
       fetchDetails();
     } catch (error) {
       console.log(error);
@@ -79,7 +59,6 @@ function TaskDetails() {
       setEditingCommentId(null);
       setEditedComment("");
       fetchDetails();
-      console.log(result);
     } catch (error) {
       console.log(error);
     }
@@ -94,7 +73,6 @@ function TaskDetails() {
 
   return (
     <div className="p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 ">
-      {/* Left: Task Details & Comments */}
       <div className="lg:col-span-2 space-y-4">
         <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900">{data.title}</h1>
@@ -193,7 +171,7 @@ function TaskDetails() {
           </div>
         </div> */}
 
-        <TaskComments 
+        <TaskComments
           comments={comments}
           user={user}
           newComment={newComment}
@@ -206,6 +184,7 @@ function TaskDetails() {
           handleDeleteComment={handleDeleteComment}
           handleUpdateComment={handleUpdateComment}
           startEditing={startEditing}
+          editInputRef={useRef(null)}
         />
       </div>
 
