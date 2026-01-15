@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LuPencil, LuTrash, LuEye } from "react-icons/lu";
+import { LuPencil, LuTrash, LuEye, LuClipboardList } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import ConfirmDelete from "./ConfirmDelete";
 
@@ -22,11 +22,11 @@ function TaskTable({
   const [itemToDelete, setItemToDelete] = useState(null);
   const renderStatus = (status) => {
     const styles = {
-      OVERDUE: "text-red-700 bg-red-200 border-red-200",
-      COMPLETED: "text-green-700 bg-green-200 border-green-200",
-      IN_TESTING: "text-purple-700 bg-purple-50 border-purple-100",
-      TODO: "text-blue-700 bg-blue-50 border-blue-100",
-      IN_PROGRESS: "text-orange-700 bg-orange-50 border-orange-100",
+      OVERDUE: "text-red-600 bg-red-50 border-red-100",
+      COMPLETED: "text-emerald-600 bg-emerald-50 border-emerald-100",
+      IN_TESTING: "text-indigo-600 bg-indigo-50 border-indigo-100",
+      TODO: "text-slate-600 bg-slate-100 border-slate-200",
+      IN_PROGRESS: "text-amber-600 bg-amber-50 border-amber-100",
     };
     return (
       <span
@@ -71,88 +71,122 @@ function TaskTable({
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
-            {tasks.map((task) => (
-              <tr
-                key={task.id}
-                className={`${
-                  task.status === "OVERDUE"
-                    ? "bg-red-50/50"
-                    : "hover:bg-gray-50/50"
-                } transition-colors`}
-              >
-                {visibleColumns.includes("title") && (
-                  <td className="p-4">
-                    <div className="font-bold text-gray-800 truncate">{task.title}</div>
-                    <div className="text-[10px] text-blue-500 font-medium uppercase truncate">
-                      {task.projectName || "General"}
+          {tasks?.length > 0 ? (
+            <tbody className="divide-y divide-gray-50">
+              {tasks.map((task) => (
+                <tr
+                  key={task.id}
+                  className={`${
+                    task.status === "OVERDUE"
+                      ? "bg-red-50/50"
+                      : "hover:bg-gray-50/50"
+                  } transition-colors`}
+                >
+                  {visibleColumns.includes("title") && (
+                    <td className="p-4">
+                      <div className="font-bold text-gray-800 truncate">
+                        {task.title}
+                      </div>
+                      <div className="text-[10px] text-indigo-600 font-medium uppercase truncate">
+                        {task.projectName || "General"}
+                      </div>
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("priority") && (
+                    <td className="p-4 text-xs font-bold text-gray-600">
+                      {task.priority}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("dueDate") && (
+                    <td className="p-4 text-sm text-gray-600 italic">
+                      {task.dueDate
+                        ? new Date(task.dueDate).toLocaleDateString("en-GB")
+                        : "No deadline"}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("status") && (
+                    <td className="p-4">{renderStatus(task.status)}</td>
+                  )}
+
+                  {visibleColumns.includes("createdBy") && (
+                    <td className="p-4 text-sm text-gray-600 truncate">
+                      {task.createdByName || "N/A"}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("assignedTo") && (
+                    <td className="p-4 text-sm text-gray-600">
+                      {task.assignedToName || "Unassigned"}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("actions") && (
+                    <td className="p-4 flex gap-3">
+                      <button
+                        onClick={() => onEdit(task)}
+                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg cursor-pointer"
+                      >
+                        <LuPencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsDeleteModalOpen(true);
+                          setItemToDelete(task.id);
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                      >
+                        <LuTrash size={18} />
+                      </button>
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("details") && (
+                    <td className="p-4">
+                      <Link
+                        to={`/tasks/${task.id}`}
+                        className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                      >
+                        <LuEye size={20} />
+                      </Link>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          ) : (
+            <tbody>
+              <tr>
+                <td
+                  colSpan={visibleColumns.length}
+                  className="py-24 text-center"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-20 h-20 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                      <LuClipboardList size={40} strokeWidth={1.5} />
                     </div>
-                  </td>
-                )}
 
-                {visibleColumns.includes("priority") && (
-                  <td className="p-4 text-xs font-bold text-gray-600">
-                    {task.priority}
-                  </td>
-                )}
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                      No Tasks Available
+                    </h3>
 
-                {visibleColumns.includes("dueDate") && (
-                  <td className="p-4 text-sm text-gray-600 italic">
-                    {task.dueDate
-                      ? new Date(task.dueDate).toLocaleDateString("en-GB")
-                      : "No deadline"}
-                  </td>
-                )}
+                    <p className="text-slate-400 text-sm mt-2 max-w-[250px] mx-auto leading-relaxed">
+                      There are no tasks to display at the moment. Please check
+                      back later.
+                    </p>
 
-                {visibleColumns.includes("status") && (
-                  <td className="p-4">{renderStatus(task.status)}</td>
-                )}
-
-                {visibleColumns.includes("createdBy") && (
-                  <td className="p-4 text-sm text-gray-600 truncate">
-                    {task.createdByName || "N/A"}
-                  </td>
-                )}
-
-                {visibleColumns.includes("assignedTo") && (
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.assignedToName || "Unassigned"}
-                  </td>
-                )}
-
-                {visibleColumns.includes("actions") && (
-                  <td className="p-4 flex gap-3">
-                    <button
-                      onClick={() => onEdit(task)}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer"
-                    >
-                      <LuPencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsDeleteModalOpen(true);
-                        setItemToDelete(task.id);
-                      }}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                    >
-                      <LuTrash size={18} />
-                    </button>
-                  </td>
-                )}
-
-                {visibleColumns.includes("details") && (
-                  <td className="p-4">
-                    <Link
-                      to={`/tasks/${task.id}`}
-                      className="text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      <LuEye size={20} />
-                    </Link>
-                  </td>
-                )}
+                    <div className="mt-8 border-t border-slate-100 pt-3 w-48">
+                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em]">
+                        Ready for more?
+                      </span>
+                    </div>
+                  </div>
+                </td>
               </tr>
-            ))}
-          </tbody>
+            </tbody>
+          )}
         </table>
       </div>
       {isDeleteModalOpen && (

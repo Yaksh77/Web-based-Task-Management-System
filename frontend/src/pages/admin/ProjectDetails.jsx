@@ -4,9 +4,11 @@ import api from "../../../api";
 import { LuFileDiff, LuMinus, LuPlus, LuTrash, LuUpload } from "react-icons/lu";
 import ConfirmDelete from "../../components/ConfirmDelete";
 import toast from "react-hot-toast";
+import TaskTable from "../../components/TaskTable";
 function ProjectDetails() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [assignUser, setAssignUser] = useState("");
   const [allUsers, setAllUsers] = useState([]);
@@ -44,7 +46,7 @@ function ProjectDetails() {
   const fetchProjectTasks = async () => {
     try {
       const { data } = await api.get(`/user/get-project-tasks/${projectId}`);
-      console.log(data.tasks);
+      setTasks(data.tasks);
     } catch (error) {
       console.log(error);
     }
@@ -58,7 +60,7 @@ function ProjectDetails() {
         `/admin/update-project/${projectId}`,
         updatedProject
       );
-      if (response) toast("Project updated successfully!");
+      if (response.status === 200) toast.success("Project updated successfully!");
       setIsModalOpen(false);
       fetchProjectInfo();
     } catch (error) {
@@ -83,7 +85,6 @@ function ProjectDetails() {
   const fetchUsers = async () => {
     try {
       const { data } = await api.get("/admin/get-all-users?limit=100");
-      console.log(data);
       setAllUsers(data.users || []);
     } catch (err) {
       console.error("Failed to fetch users", err);
@@ -100,28 +101,23 @@ function ProjectDetails() {
   }, [projectId]);
 
   const assignUserToProject = async (userId) => {
-    console.log(assignUser);
-
     try {
       const response = await api.post("/admin/assign-user", {
         userId,
         projectId,
       });
-      console.log(response.data);
-
+      if (response.status === 200) toast.success("User assigned successfully!");
       fetchProjectUsers(projectId);
     } catch (error) {
       console.error("Error assigning user to project:", error);
+      toast.error("Failed to assign user. Please try again.");
     }
   };
 
   const handleRemoveMember = async (memberToRemove) => {
-    console.log(memberToRemove.id);
-    
     try {
       const response = await api.delete(`/admin/remove-user/${projectId}/${memberToRemove.id}`);
-      console.log(response.data);
-      if (response) toast.success("Member removed successfully!");
+      if (response.status === 200) toast.success("Member removed successfully!");
       fetchProjectUsers(projectId);
     } catch (error) {
       console.error("Error removing member:", error);
@@ -134,7 +130,7 @@ function ProjectDetails() {
       <div className="flex items-center justify-end gap-3">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
         >
           <LuFileDiff size={20} /> Update Project
         </button>
@@ -179,18 +175,23 @@ function ProjectDetails() {
             {allUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
-                {console.log(u.id)}
               </option>
             ))}
           </select>
           <button
             onClick={() => assignUserToProject(assignUser)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-indigo-600 text-white px-4 py-2 rounded"
           >
             Assign
           </button>
         </div>
       </div>
+
+      <div>
+        <h2 className="text-2xl font-bold mt-10 mb-4 ml-1">Project Tasks</h2>
+      </div>
+
+      <TaskTable tasks={tasks} visibleColumns={['title', 'priority', 'dueDate', 'status','assignedTo','details']} />
 
       {isModalOpen && (
         <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -205,7 +206,7 @@ function ProjectDetails() {
                 </label>
                 <input
                   type="text"
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="Enter project name"
                   value={updatedProject.title}
                   onChange={(e) =>
@@ -222,7 +223,7 @@ function ProjectDetails() {
                   Description
                 </label>
                 <textarea
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-28"
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-28"
                   placeholder="What is this project about?"
                   value={updatedProject.description}
                   onChange={(e) =>
@@ -244,7 +245,7 @@ function ProjectDetails() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {loading ? "Updating..." : "Update"}
                 </button>
@@ -253,6 +254,7 @@ function ProjectDetails() {
           </div>
         </div>
       )}
+
       {deleteModalOpen && (
         <ConfirmDelete
           deleteModalOpen={deleteModalOpen}

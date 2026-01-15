@@ -265,15 +265,20 @@ export const updateTask = async (req, res) => {
     TODO: "IN_PROGRESS",
     IN_PROGRESS: "IN_TESTING",
     IN_TESTING: "COMPLETED",
+    OVERDUE: "IN_PROGRESS",
   };
 
   try {
     await db.transaction(async (tx) => {
+      let logEntries = [];
+
       const [existingTask] = await tx
         .select()
         .from(tasks)
         .where(eq(tasks.id, Number(taskId)));
-        
+
+      if (!existingTask) throw new Error("Task not found");
+
       const [oldMapping] = await tx
         .select()
         .from(userTaskMapping)
@@ -294,11 +299,36 @@ export const updateTask = async (req, res) => {
       if (description !== undefined) updateData.description = description;
       if (status !== undefined) updateData.status = status;
       if (priority !== undefined) updateData.priority = priority;
-      if (dueDate !== undefined) {
-        updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
-        if (status === undefined && existingTask.status !== "TODO") {
-          updateData.status = "IN_PROGRESS";
+      if (dueDate !== undefined) {
+        const newDate = dueDate ? new Date(dueDate) : null;
+        updateData.dueDate = newDate;
+
+        const incomingDateStr = newDate
+          ? newDate.toISOString().split("T")[0]
+          : null;
+        const dbDateStr = existingTask.dueDate
+          ? new Date(existingTask.dueDate).toISOString().split("T")[0]
+          : null;
+
+        if (incomingDateStr !== dbDateStr) {
+          logEntries.push(
+            `changed due date to ${new Date(dueDate).toLocaleDateString(
+              "en-GB"
+            )}`
+          );
+
+          if (existingTask.status === "OVERDUE") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (newDate && newDate >= today) {
+              updateData.status = "IN_PROGRESS";
+              logEntries.push(
+                `automatically moved status from OVERDUE to IN_PROGRESS due to date extension`
+              );
+            }
+          }
         }
       }
 
@@ -309,46 +339,40 @@ export const updateTask = async (req, res) => {
         .set(updateData)
         .where(eq(tasks.id, Number(taskId)));
 
-      let logEntries = [];
-
-      if (status && status !== existingTask.status) {
-        logEntries.push(
-          `changed status from ${existingTask.status} to ${status}`
-        );
+      const finalStatus = updateData.status || status;
+      if (finalStatus && finalStatus !== existingTask.status) {
+        if (
+          !logEntries.some((log) => log.includes("automatically moved status"))
+        ) {
+          logEntries.push(
+            `changed status from ${existingTask.status} to ${finalStatus}`
+          );
+        }
       }
+
       if (priority && priority !== existingTask.priority) {
         logEntries.push(`changed priority to ${priority}`);
       }
-      if (assignedUserId && Number(assignedUserId) !== oldMapping?.userId) {
+
+      if (
+        assignedUserId !== undefined &&
+        Number(assignedUserId) !== oldMapping?.userId
+      ) {
         const [newUser] = await tx
           .select()
           .from(users)
           .where(eq(users.id, Number(assignedUserId)));
-        logEntries.push(`reassigned task to ${newUser.name}`);
-      }
 
-      // I have to check for the common case where both frontend and backend dates becomes same
-      const incomingDate = dueDate
-        ? new Date(dueDate).toISOString().split("T")[0]
-        : null;
-      const dbDate = existingTask.dueDate
-        ? new Date(existingTask.dueDate).toISOString().split("T")[0]
-        : null;
-
-      if (dueDate !== undefined && incomingDate !== dbDate) {
-        logEntries.push(
-          `changed due date from ${new Date(
-            existingTask.dueDate
-          ).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "2-digit",
-          })} to ${new Date(dueDate).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "2-digit",
-          })}`
-        );
+        await tx
+          .delete(userTaskMapping)
+          .where(eq(userTaskMapping.taskId, Number(taskId)));
+        if (assignedUserId) {
+          await tx.insert(userTaskMapping).values({
+            userId: Number(assignedUserId),
+            taskId: Number(taskId),
+          });
+          logEntries.push(`reassigned task to ${newUser.name}`);
+        }
       }
 
       for (const actionText of logEntries) {
@@ -366,18 +390,13 @@ export const updateTask = async (req, res) => {
           .set({ projectId: Number(projectId) })
           .where(eq(projectTaskMapping.taskId, Number(taskId)));
       }
-      if (assignedUserId !== undefined) {
-        await tx
-          .update(userTaskMapping)
-          .set({ userId: Number(assignedUserId) })
-          .where(eq(userTaskMapping.taskId, Number(taskId)));
-      }
     });
 
     res
       .status(200)
       .json({ message: "Task updated and changes logged successfully" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };

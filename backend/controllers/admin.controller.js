@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, not } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, not, or } from "drizzle-orm";
 import { db } from "../config/db.js";
 import { activityLogs, projects, projectTaskMapping, projectUserMapping, tasks, users, userTaskMapping } from "../models/schema.js";
 import { validationResult } from "express-validator";
@@ -25,6 +25,37 @@ export const createProject = async (req, res) => {
       .status(500)
       .json({ message: "Error creating project", error: error.message });
   }
+};
+
+export const createUser = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { name, email, password, role } = req.body;
+  try {
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    if (existingUser.length > 0) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+    const newUser = await db.insert(users).values({
+      name,
+      email,
+      password,
+      role,
+    }); 
+    res.status(201).json({
+      message: "User created successfully",
+      user: newUser[0],
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error creating user", error: error.message });
+  } 
 };
 
 export const getAllProjects = async (req, res) => {
@@ -190,45 +221,63 @@ export const getProjectUsers = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
+  const search = req.query.search || ""; 
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 100; 
+  const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
 
   try {
-    const [allUsers, totalCountResult] = await db.transaction(async (tx) => {
-      const usersData = await tx
-        .select({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .limit(limit)
-        .offset(offset);
+    let whereClause = [];
+    if (search) {
+      whereClause.push(
+        or(
+          ilike(users.name, `%${search}%`), 
+          ilike(users.email, `%${search}%`)
+        )
+      );
+    }
 
-      const countRes = await tx.select({ value: count() }).from(users);
-      return [usersData, countRes];
-    });
+    const usersDataQuery = db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .limit(limit)
+      .offset(offset);
+
+    const countQuery = db.select({ value: count() }).from(users);
+
+    if (whereClause.length > 0) {
+      usersDataQuery.where(and(...whereClause));
+      countQuery.where(and(...whereClause));
+    }
+
+    const [allUsers, totalCountResult] = await Promise.all([
+      usersDataQuery,
+      countQuery
+    ]);
 
     const totalUsers = totalCountResult[0].value;
+    const totalPages = Math.ceil(totalUsers / limit);
 
     res.status(200).json({
       users: allUsers,
       pagination: {
         totalUsers,
         currentPage: page,
-        totalPages: Math.ceil(totalUsers / limit),
+        totalPages,
         limit,
       },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error fetching users" });
+    console.error("FULL ERROR DETAILS:", error); 
+    res.status(500).json({ message: "Error fetching users", details: error.message });
   }
 };
-
 
 export const removeUserFromProject = async (req, res) => {
   const { projectId, userId } = req.params;

@@ -3,6 +3,7 @@ import { isAdmin, verifyToken } from "../middleware/auth.middleware.js";
 import {
   assignUsersToProject,
   createProject,
+  createUser,
   deleteProject,
   getAllProjects,
   getAllUsers,
@@ -11,7 +12,7 @@ import {
   removeUserFromProject,
   updateProject,
 } from "../controllers/admin.controller.js";
-import { createAndUpdateProjectValidation } from "../middleware/validations.middleware.js";
+import { createAndUpdateProjectValidation, registerUserValidation } from "../middleware/validations.middleware.js";
 
 const adminRouter = express.Router();
 
@@ -21,6 +22,13 @@ adminRouter.post(
   isAdmin,
   createAndUpdateProjectValidation(),
   createProject
+);
+adminRouter.post(
+  "/create-user",
+  verifyToken,
+  isAdmin,
+  registerUserValidation(),
+  createUser
 );
 adminRouter.post("/assign-user", verifyToken, isAdmin, assignUsersToProject);
 adminRouter.get("/get-all-projects", verifyToken, isAdmin, getAllProjects);
