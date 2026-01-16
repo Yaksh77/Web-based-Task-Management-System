@@ -4,6 +4,10 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
+import {
+  sendErrorResponse,
+  sendSuccessResponse,
+} from "../utils/responseHandler.js";
 
 export const register = async (req, res) => {
   const errors = validationResult(req);
@@ -38,18 +42,26 @@ export const register = async (req, res) => {
         createdAt: users.createdAt,
       });
 
-    res
-      .status(201)
-      .json({ message: "User registered successfully", user: newUser[0] });
+    return sendSuccessResponse(
+      res,
+      201,
+      "User registered successfully",
+      newUser[0]
+    );
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendErrorResponse(
+      res,
+      500,
+      "User registration failed",
+      error.message
+    );
   }
 };
 
 export const login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return sendErrorResponse(res, 400, "Validation Error", errors.array());
   }
 
   const { email, password } = req.body;
@@ -58,12 +70,13 @@ export const login = async (req, res) => {
       .select()
       .from(users)
       .where(eq(users.email, email));
+
     if (userFound.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return sendErrorResponse(res, 404, "User not found"); 
 
     const isMatch = await bcrypt.compare(password, userFound[0].password);
     if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+      return sendErrorResponse(res, 400, "Invalid credentials"); 
 
     const token = jwt.sign(
       { id: userFound[0].id, role: userFound[0].role },
@@ -71,15 +84,13 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({
+    return sendSuccessResponse(res, 200, "Login successful", {
       token,
-      user: {
-        id: userFound[0].id,
-        name: userFound[0].name,
-        role: userFound[0].role,
-      },
+      id: userFound[0].id,
+      name: userFound[0].name,
+      role: userFound[0].role,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return sendErrorResponse(res, 500, "Login failed", error.message);
   }
 };

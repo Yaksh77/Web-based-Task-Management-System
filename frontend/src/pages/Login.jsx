@@ -4,6 +4,7 @@ import api from "../../api";
 import { useNavigate } from "react-router-dom";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import toast from "react-hot-toast";
+import Loader from "../components/Loader";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -13,7 +14,6 @@ function Login() {
     password: "",
   });
   const [loading, setLoading] = useState(false); 
-
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -40,30 +40,38 @@ function Login() {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+  e.preventDefault();
+  if (!validate()) return;
 
-    setLoading(true);
-    try {
-      const { data } = await api.post("/auth/login", formData);
-      if(data) toast.success("Login successfully!");      
-      useAuthStore.getState().login(data.user, data.token);
+  setLoading(true);
+  try {
+    const response = await api.post("/auth/login", formData);
+    const apiRes = response.data; 
 
-      if (data.user.role === "ADMIN") {
+    // console.log("API Response:", apiRes);
+
+    if (apiRes.success) {
+      const userData = apiRes.data; 
+      const token = apiRes.data.token;
+
+      toast.success(apiRes.message || "Login successful!");
+      useAuthStore.getState().login(userData, token);
+
+      if (userData.role === "ADMIN") {
         navigate("/admin/panel");
       } else {
         navigate("/dashboard");
       }
-    } catch (err) {
-      setErrors({ 
-        form: err.response?.data?.message || "Login failed. Please try again." 
-      });
-      toast.error(err.response?.data?.message || "Login failed. Please try again.");
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (err) {
+    console.error("Login Error:", err);
+    const errorMsg = err.response?.data?.message || "Login failed. Please try again.";
+    setErrors({ form: errorMsg });
+    toast.error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
 return (
   <div className="flex items-center justify-center min-h-screen bg-[#f8fafc] p-4 text-slate-900">
@@ -125,7 +133,7 @@ return (
           loading ? "opacity-70 cursor-not-allowed" : "hover:bg-indigo-700 hover:shadow-indigo-200"
         }`}
       >
-        {loading ? "Signing in..." : "Sign In"}
+        {loading ? <Loader variant="button"/> : "Sign In"}
       </button>
 
       <p className="mt-6 text-center text-slate-500 text-sm font-medium">

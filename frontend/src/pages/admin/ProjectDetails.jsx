@@ -1,10 +1,18 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../../../api";
-import { LuFileDiff, LuMinus, LuPlus, LuTrash, LuUpload } from "react-icons/lu";
+import {
+  LuFileDiff,
+  LuMinus,
+  LuPlus,
+  LuTrash,
+  LuTrash2,
+  LuUpload,
+} from "react-icons/lu";
 import ConfirmDelete from "../../components/ConfirmDelete";
 import toast from "react-hot-toast";
 import TaskTable from "../../components/TaskTable";
+import Loader from "../../components/Loader";
 function ProjectDetails() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -13,8 +21,10 @@ function ProjectDetails() {
   const [assignUser, setAssignUser] = useState("");
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userDeleteModalOpen, setUserDeleteModalOpen] = useState(false);
+  const [toDeleteMember, setToDeleteMember] = useState(null);
   const [updatedProject, setUpdatedProject] = useState({
     title: "",
     description: "",
@@ -22,22 +32,25 @@ function ProjectDetails() {
   const navigate = useNavigate();
 
   const fetchProjectInfo = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get(`/admin/get-project-details/${projectId}`);
-      setProject(data.project);
+      setProject(data.data);
       setUpdatedProject({
-        title: data.project.title,
-        description: data.project.description,
+        title: data.data.title,
+        description: data.data.description,
       });
     } catch (error) {
       console.error("Error fetching project info:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchProjectUsers = async (projectId) => {
     try {
       const { data } = await api.get(`/admin/get-project-users/${projectId}`);
-      setMembers(data.usersInfo);
+      setMembers(data.data.usersInfo);
     } catch (error) {
       console.error("Error fetching project members:", error);
     }
@@ -54,27 +67,25 @@ function ProjectDetails() {
 
   const handleUpdateProject = async (e) => {
     e.preventDefault();
-    setLoading(true);
     try {
       const response = await api.patch(
         `/admin/update-project/${projectId}`,
         updatedProject
       );
-      if (response.status === 200) toast.success("Project updated successfully!");
+      if (response.status === 200)
+        toast.success("Project updated successfully!");
       setIsModalOpen(false);
       fetchProjectInfo();
     } catch (error) {
       console.error("Error updating project:", error);
       toast.error("Failed to update project. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleDeleteProject = async () => {
     try {
       const response = await api.delete(`/admin/delete-project/${projectId}`);
-      if (response) toast("Project deleted successfully!");
+      if (response) toast.success("Project deleted successfully!");
       navigate("/admin/panel");
     } catch (error) {
       console.log(error);
@@ -85,20 +96,11 @@ function ProjectDetails() {
   const fetchUsers = async () => {
     try {
       const { data } = await api.get("/admin/get-all-users?limit=100");
-      setAllUsers(data.users || []);
+      setAllUsers(data.data.users || []);
     } catch (err) {
       console.error("Failed to fetch users", err);
     }
   };
-
-  useEffect(() => {
-    if (projectId) {
-      fetchProjectInfo();
-      fetchProjectUsers(projectId);
-      fetchUsers();
-      fetchProjectTasks();
-    }
-  }, [projectId]);
 
   const assignUserToProject = async (userId) => {
     try {
@@ -116,14 +118,32 @@ function ProjectDetails() {
 
   const handleRemoveMember = async (memberToRemove) => {
     try {
-      const response = await api.delete(`/admin/remove-user/${projectId}/${memberToRemove.id}`);
-      if (response.status === 200) toast.success("Member removed successfully!");
-      fetchProjectUsers(projectId);
+      const response = await api.delete(
+        `/admin/remove-user/${projectId}/${memberToRemove.id}`
+      );
+      if (response.status === 200) {
+        toast.success("Member removed successfully!");
+        setUserDeleteModalOpen(false);
+        fetchProjectUsers(projectId);
+      }
     } catch (error) {
       console.error("Error removing member:", error);
       toast.error("Failed to remove member. Please try again.");
     }
   };
+
+  useEffect(() => {
+    if (projectId) {
+      fetchProjectInfo();
+      fetchProjectUsers(projectId);
+      fetchUsers();
+      fetchProjectTasks();
+    }
+  }, [projectId]);
+
+  if (loading) {
+    return <Loader variant="page" text="Fetching Project Details..." />;
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -136,9 +156,9 @@ function ProjectDetails() {
         </button>
         <button
           onClick={() => setDeleteModalOpen(true)}
-          className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition"
+          className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
         >
-          <LuMinus size={20} /> Delete Project
+          <LuTrash2 size={20} /> Delete Project
         </button>
       </div>
       <h1 className="text-3xl font-bold mb-2">{project?.title}</h1>
@@ -147,7 +167,7 @@ function ProjectDetails() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-xl shadow">
           <h2 className="text-xl font-semibold mb-4">Project Members</h2>
-          <ul>
+          <ul className="overflow-y-auto max-h-[200px]">
             {members?.map((member) => (
               <li
                 key={member.id}
@@ -155,7 +175,10 @@ function ProjectDetails() {
               >
                 <p>{member.name}</p>
                 <button
-                  onClick={() => handleRemoveMember(member)}
+                  onClick={() => {
+                    setUserDeleteModalOpen(true);
+                    setToDeleteMember(member);
+                  }}
                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                 >
                   <LuTrash size={16} />
@@ -191,7 +214,19 @@ function ProjectDetails() {
         <h2 className="text-2xl font-bold mt-10 mb-4 ml-1">Project Tasks</h2>
       </div>
 
-      <TaskTable tasks={tasks} visibleColumns={['title', 'priority', 'dueDate', 'status','assignedTo','details']} />
+      <div className="flex-1 bg-white rounded-4xl shadow-xl border border-slate-100 overflow-y-auto no-scrollbar relative max-h-[600px] p-6">
+        <TaskTable
+          tasks={tasks}
+          visibleColumns={[
+            "title",
+            "priority",
+            "dueDate",
+            "status",
+            "assignedTo",
+            "details",
+          ]}
+        />
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -261,6 +296,15 @@ function ProjectDetails() {
           setDeleteModalOpen={setDeleteModalOpen}
           onConfirmDelete={handleDeleteProject}
           onCancel={() => setDeleteModalOpen(false)}
+        />
+      )}
+
+      {userDeleteModalOpen && (
+        <ConfirmDelete
+          deleteModalOpen={userDeleteModalOpen}
+          setDeleteModalOpen={setUserDeleteModalOpen}
+          onConfirmDelete={() => handleRemoveMember(toDeleteMember)}
+          onCancel={() => setUserDeleteModalOpen(false)}
         />
       )}
     </div>

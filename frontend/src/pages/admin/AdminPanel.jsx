@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Pagination from "../../components/Pagination";
 import ProjectCard from "../../components/ProjectCard";
 import toast from "react-hot-toast";
+import Loader from "../../components/Loader";
 
 function AdminDashboard() {
   const [projects, setProjects] = useState([]);
@@ -47,7 +48,7 @@ function AdminDashboard() {
           limit: 8,
         },
       });
-      setProjects(data.projects);
+      setProjects(data.data.projects);
       setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Error fetching projects", err);
@@ -68,6 +69,7 @@ function AdminDashboard() {
     setLoading(true);
     try {
       const response = await api.post("/admin/create-project", formData);
+
       if (response.status === 201) {
         toast.success("Project created successfully!");
       }
@@ -81,6 +83,10 @@ function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <Loader variant="page" text="Fetching Projects..." />;
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen space-y-9">
@@ -173,7 +179,7 @@ function AdminDashboard() {
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {loading ? "Creating..." : "Create"}
+                  {loading ? <Loader /> : "Create Project"}
                 </button>
               </div>
             </form>
