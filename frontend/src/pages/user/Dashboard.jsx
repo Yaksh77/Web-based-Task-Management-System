@@ -4,15 +4,20 @@ import { useEffect } from "react";
 import { useState } from "react";
 import ProjectCard from "../../components/ProjectCard";
 import { LuFolderClock } from "react-icons/lu";
+import Loader from "../../components/Loader";
 function Dashboard() {
   const [myProjects, setMyProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleGetUserProject = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get(`/user/user-projects`);
-      setMyProjects(data.projects);
+      setMyProjects(data.data);
     } catch (error) {
       console.log(error);
+    }finally{
+      setLoading(false);
     }
   };
 
@@ -20,6 +25,9 @@ function Dashboard() {
     handleGetUserProject();
   }, []);
 
+  if(loading){
+    return <Loader variant="page" text="Fetching your projects..." />;
+  }
 
 return (
   <div className="p-4 md:p-10 min-h-screen bg-slate-50">

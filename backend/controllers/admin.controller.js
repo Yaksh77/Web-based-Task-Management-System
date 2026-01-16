@@ -1,7 +1,19 @@
 import { and, count, eq, ilike, inArray, not, or } from "drizzle-orm";
 import { db } from "../config/db.js";
-import { activityLogs, projects, projectTaskMapping, projectUserMapping, tasks, users, userTaskMapping } from "../models/schema.js";
+import {
+  activityLogs,
+  projects,
+  projectTaskMapping,
+  projectUserMapping,
+  tasks,
+  users,
+  userTaskMapping,
+} from "../models/schema.js";
 import { validationResult } from "express-validator";
+import {
+  sendErrorResponse,
+  sendSuccessResponse,
+} from "../utils/responseHandler.js";
 
 export const createProject = async (req, res) => {
   const errors = validationResult(req);
@@ -16,14 +28,14 @@ export const createProject = async (req, res) => {
       description,
       createdBy: req.user.id,
     });
-    res.status(201).json({
-      message: "Project created successfully",
-      project: newProject[0],
-    });
+    return sendSuccessResponse(
+      res,
+      201,
+      "Project created successfully",
+      newProject
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating project", error: error.message });
+    return sendErrorResponse(res, 500, "Error creating project", error.message);
   }
 };
 
@@ -46,16 +58,11 @@ export const createUser = async (req, res) => {
       email,
       password,
       role,
-    }); 
-    res.status(201).json({
-      message: "User created successfully",
-      user: newUser[0],
     });
+    return sendSuccessResponse(res, 201, "User created successfully", newUser);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating user", error: error.message });
-  } 
+    return sendErrorResponse(res, 500, "Error creating user", error.message);
+  }
 };
 
 export const getAllProjects = async (req, res) => {
@@ -65,29 +72,42 @@ export const getAllProjects = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const [allProjects, totalCountResult] = await Promise.all([
-      db.select()
-        .from(projects)
-        .limit(limit)
-        .offset(offset),
-      db.select({ value: count() }).from(projects)
+      db.select().from(projects).limit(limit).offset(offset),
+      db.select({ value: count() }).from(projects),
     ]);
 
     const totalProjects = totalCountResult[0].value;
     const totalPages = Math.ceil(totalProjects / limit);
 
-    res.status(200).json({ 
-      projects: allProjects,
-      pagination: {
+    // res.status(200).json({
+    //   projects: allProjects,
+    //   pagination: {
+    //     totalProjects,
+    //     currentPage: page,
+    //     totalPages,
+    //     limit,
+    //   },
+    // });
+
+    return sendSuccessResponse(
+      res,
+      200,
+      "Projects fetched successfully",
+      { projects: allProjects },
+      {
         totalProjects,
         currentPage: page,
         totalPages,
-        limit
+        limit,
       }
-    });
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching projects", error: error.message });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching projects",
+      error.message
+    );
   }
 };
 
@@ -114,10 +134,20 @@ export const assignUsersToProject = async (req, res) => {
       projectId: Number(projectId),
       userId: Number(userId),
     });
-    console.log(result);
-    res.status(200).json({ message: "User assigned to project successfully" });
+
+    return sendSuccessResponse(
+      res,
+      200,
+      "User assigned to project successfully",
+      result
+    );
   } catch (error) {
-    console.log(`Error ocurred while assigning user to project : ${error}`);
+    return sendErrorResponse(
+      res,
+      500,
+      "Error assigning user to project",
+      error.message
+    );
   }
 };
 
@@ -131,12 +161,19 @@ export const getProjectDetails = async (req, res) => {
     if (project.length === 0) {
       return res.status(404).json({ message: "Project not found" });
     }
-    res.status(200).json({ project: project[0] });
+    return sendSuccessResponse(
+      res,
+      200,
+      "Project details fetched successfully",
+      project[0]
+    );
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching project details",
-      error: error.message,
-    });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching project details",
+      error.message
+    );
   }
 };
 
@@ -148,11 +185,14 @@ export const updateProject = async (req, res) => {
       .update(projects)
       .set({ title, description })
       .where(eq(projects.id, Number(projectId)));
-    res.status(200).json({ message: "Project updated successfully" });
+    return sendSuccessResponse(
+      res,
+      200,
+      "Project updated successfully",
+      result
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error updating project", error: error.message });
+    return sendErrorResponse(res, 500, "Error updating project", error.message);
   }
 };
 
@@ -169,10 +209,15 @@ export const deleteProject = async (req, res) => {
       const taskIds = associatedTasks.map((t) => t.taskId);
 
       if (taskIds.length > 0) {
-       
-        await tx.delete(userTaskMapping).where(inArray(userTaskMapping.taskId, taskIds));
-        await tx.delete(projectTaskMapping).where(inArray(projectTaskMapping.taskId, taskIds));
-        await tx.delete(activityLogs).where(inArray(activityLogs.taskId, taskIds));
+        await tx
+          .delete(userTaskMapping)
+          .where(inArray(userTaskMapping.taskId, taskIds));
+        await tx
+          .delete(projectTaskMapping)
+          .where(inArray(projectTaskMapping.taskId, taskIds));
+        await tx
+          .delete(activityLogs)
+          .where(inArray(activityLogs.taskId, taskIds));
 
         await tx.delete(tasks).where(inArray(tasks.id, taskIds));
       }
@@ -180,10 +225,14 @@ export const deleteProject = async (req, res) => {
       await tx.delete(projects).where(eq(projects.id, Number(projectId)));
     });
 
-    res.status(200).json({ message: "Project and all associated tasks deleted successfully" });
+    return sendSuccessResponse(
+      res,
+      200,
+      "Project and associated data deleted successfully"
+    );
   } catch (error) {
     console.error("Delete Error:", error);
-    res.status(500).json({ message: "Error deleting project", error: error.message });
+    return sendErrorResponse(res, 500, "Error deleting project", error.message);
   }
 };
 
@@ -211,17 +260,24 @@ export const getProjectUsers = async (req, res) => {
       .from(users)
       .where(inArray(users.id, userIds));
 
-    res.status(200).json({ userMappings, usersInfo });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching project users",
-      error: error.message,
+    // res.status(200).json({ userMappings, usersInfo });
+
+    return sendSuccessResponse(res, 200, "Project users fetched successfully", {
+      userMappings,
+      usersInfo,
     });
+  } catch (error) {
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching project users",
+      error.message
+    );
   }
 };
 
 export const getAllUsers = async (req, res) => {
-  const search = req.query.search || ""; 
+  const search = req.query.search || "";
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
@@ -230,10 +286,7 @@ export const getAllUsers = async (req, res) => {
     let whereClause = [];
     if (search) {
       whereClause.push(
-        or(
-          ilike(users.name, `%${search}%`), 
-          ilike(users.email, `%${search}%`)
-        )
+        or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`))
       );
     }
 
@@ -258,24 +311,34 @@ export const getAllUsers = async (req, res) => {
 
     const [allUsers, totalCountResult] = await Promise.all([
       usersDataQuery,
-      countQuery
+      countQuery,
     ]);
 
     const totalUsers = totalCountResult[0].value;
     const totalPages = Math.ceil(totalUsers / limit);
 
-    res.status(200).json({
-      users: allUsers,
-      pagination: {
-        totalUsers,
-        currentPage: page,
-        totalPages,
-        limit,
-      },
-    });
+    // res.status(200).json({
+    //   users: allUsers,
+    //   pagination: {
+    //     totalUsers,
+    //     currentPage: page,
+    //     totalPages,
+    //     limit,
+    //   },
+    // });
+
+    return sendSuccessResponse(
+      res,
+      200,
+      "Users fetched successfully",
+      { users: allUsers },
+      { totalUsers, currentPage: page, totalPages, limit }
+    );
   } catch (error) {
-    console.error("FULL ERROR DETAILS:", error); 
-    res.status(500).json({ message: "Error fetching users", details: error.message });
+    console.error("FULL ERROR DETAILS:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching users", details: error.message });
   }
 };
 
@@ -314,13 +377,17 @@ export const removeUserFromProject = async (req, res) => {
       }
     });
 
-    res.status(200).json({ 
-      message: "User removed from project and their task assignments cleared." 
-    });
+    return sendSuccessResponse(
+      res,
+      200,
+      "User removed from project and associated tasks successfully"
+    );
   } catch (error) {
-    res.status(500).json({
-      message: "Error removing user and tasks",
-      error: error.message,
-    });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error removing user from project",
+      error.message
+    );
   }
 };

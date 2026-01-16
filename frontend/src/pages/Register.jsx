@@ -3,6 +3,7 @@ import api from "../../api.js";
 import { useNavigate } from "react-router-dom";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import toast from "react-hot-toast";
+import Loader from "../components/Loader.jsx";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -170,7 +171,7 @@ return (
             : "hover:bg-indigo-700 hover:shadow-indigo-200"
         }`}
       >
-        {loading ? "Creating Account..." : "Create Account"}
+        {loading ? <Loader variant="button" /> : "Create Account"}
       </button>
 
       <p className="mt-6 text-center text-slate-500 text-sm font-medium">

@@ -6,6 +6,7 @@ import Users from "../../components/Users";
 import Pagination from "../../components/Pagination";
 import toast from "react-hot-toast";
 import { LuPlus, LuSearch, LuUserPlus } from "react-icons/lu";
+import Loader from "../../components/Loader";
 
 function ManageUsers() {
   const [allUsers, setAllUsers] = useState([]);
@@ -15,6 +16,7 @@ function ManageUsers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -34,6 +36,7 @@ function ManageUsers() {
   }, [searchTerm]);
 
   const handleFetchUsers = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get("/admin/get-all-users", {
         params: {
@@ -42,10 +45,13 @@ function ManageUsers() {
           search: searchTerm,
         },
       });
-      setAllUsers(data.users || []);
+      setAllUsers(data.data.users || []);
       setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Failed to fetch users", err);
+    }
+    finally {
+      setLoading(false);
     }
   };
   const handleChangeUserRole = async (userId, newRole) => {
@@ -96,6 +102,10 @@ function ManageUsers() {
     handleFetchUsers();
   }, [currentPage,searchTerm]);
 
+  if(loading){
+    return <Loader variant="page" text="Fetching Users..." />
+  }
+  
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">

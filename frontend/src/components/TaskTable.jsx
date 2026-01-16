@@ -73,9 +73,9 @@ function TaskTable({
           </thead>
           {tasks?.length > 0 ? (
             <tbody className="divide-y divide-gray-50">
-              {tasks.map((task) => (
+              {tasks.map((task,index) => (
                 <tr
-                  key={task.id}
+                  key={index}
                   className={`${
                     task.status === "OVERDUE"
                       ? "bg-red-50/50"

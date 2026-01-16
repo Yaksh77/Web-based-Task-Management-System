@@ -4,6 +4,7 @@ import api from "../../../api";
 import { useAuthStore } from "../../store/userAuthStore";
 import ActivityLogs from "../../components/ActivityLogs";
 import TaskComments from "../../components/TaskComments";
+import Loader from "../../components/Loader";
 
 function TaskDetails() {
   const { user } = useAuthStore();
@@ -14,15 +15,22 @@ function TaskDetails() {
   const [logs, setLogs] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [editedComment, setEditedComment] = useState("");
+  const [loading, setLoading] = useState(true);
+  const editInputRef = useRef(null);
+
 
   const fetchDetails = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get(`/user/task/${taskId}`);
-      setData(data.task);
-      setComments(data.taskComments);
-      setLogs(data.logs);
+      setData(data.data.task);
+      setComments(data.data.taskComments);
+      setLogs(data.data.logs);
     } catch (err) {
       console.error(err);
+    }
+    finally{
+      setLoading(false);
     }
   };
 
@@ -69,7 +77,9 @@ function TaskDetails() {
     setEditedComment(comment.description);
   };
 
-  if (!data) return <div className="p-8">Loading...</div>;
+  if(loading){
+    return <Loader variant="page" text="Fetching Task Details..." />;
+  }
 
   return (
     <div className="p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 ">
@@ -184,7 +194,7 @@ function TaskDetails() {
           handleDeleteComment={handleDeleteComment}
           handleUpdateComment={handleUpdateComment}
           startEditing={startEditing}
-          editInputRef={useRef(null)}
+          editInputRef={editInputRef}
         />
       </div>
 

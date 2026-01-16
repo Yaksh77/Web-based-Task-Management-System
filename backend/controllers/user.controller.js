@@ -10,6 +10,10 @@ import {
   activityLogs,
 } from "../models/schema.js";
 import { db } from "../config/db.js";
+import {
+  sendErrorResponse,
+  sendSuccessResponse,
+} from "../utils/responseHandler.js";
 
 export const addTask = async (req, res) => {
   const {
@@ -59,13 +63,18 @@ export const addTask = async (req, res) => {
       return newTask;
     });
 
-    res
-      .status(201)
-      .json({ message: "Task created and mapped successfully", task: result });
+    // res
+    //   .status(201)
+    //   .json({ message: "Task created and mapped successfully", task: result });
+
+    return sendSuccessResponse(
+      res,
+      201,
+      "Task created and mapped successfully",
+      result
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating task", error: error.message });
+    return sendErrorResponse(res, 500, "Database Error", error.message);
   }
 };
 
@@ -77,10 +86,13 @@ export const updateUserRole = async (req, res) => {
       .set({ role: newRole })
       .where(eq(users.id, Number(userId)));
 
-    res.status(200).json({ message: `User role updated to ${newRole}` });
+    return sendSuccessResponse(
+      res,
+      200,
+      `User role updated to ${newRole} successfully`
+    );
   } catch (error) {
-    console.error("Database Error:", error);
-    res.status(500).json({ error: error.message });
+    return sendErrorResponse(res, 500, "Database Error", error.message);
   }
 };
 
@@ -88,10 +100,9 @@ export const deleteUser = async (req, res) => {
   const { userId } = req.params;
   try {
     const result = await db.delete(users).where(eq(users.id, Number(userId)));
-    res.status(200).json({ message: `User deleted successfully` });
+    return sendSuccessResponse(res, 200, "User deleted successfully");
   } catch (error) {
-    console.error("Database Error:", error);
-    res.status(500).json({ error: error.message });
+    return sendErrorResponse(res, 500, "User deletion failed", error.message);
   }
 };
 
@@ -131,11 +142,19 @@ export const getUserProjects = async (req, res) => {
     }
 
     const assignedProjects = await query;
-    res.status(200).json({ projects: assignedProjects });
+    return sendSuccessResponse(
+      res,
+      200,
+      "Projects fetched successfully",
+      assignedProjects
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching projects", error: error.message });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching projects",
+      error.message
+    );
   }
 };
 
@@ -206,19 +225,30 @@ export const getMyTasks = async (req, res) => {
       .limit(limit)
       .offset(offset);
 
-    res.status(200).json({
-      tasks: userTasks,
-      pagination: {
+    // res.status(200).json({
+    //   tasks: userTasks,
+    //   pagination: {
+    //     totalTasks: Number(totalCount.count),
+    //     totalPages: Math.ceil(Number(totalCount.count) / limit),
+    //     currentPage: page,
+    //     limit: limit,
+    //   },
+    // });
+
+    return sendSuccessResponse(
+      res,
+      200,
+      "Tasks fetched successfully",
+      userTasks,
+      {
         totalTasks: Number(totalCount.count),
         totalPages: Math.ceil(Number(totalCount.count) / limit),
         currentPage: page,
         limit: limit,
-      },
-    });
+      }
+    );
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching tasks", error: error.message });
+    return sendErrorResponse(res, 500, "Error fetching tasks", error.message);
   }
 };
 
@@ -242,9 +272,19 @@ export const getProjectTasks = async (req, res) => {
       .leftJoin(users, eq(userTaskMapping.userId, users.id))
       .where(eq(projectTaskMapping.projectId, Number(projectId)));
 
-    res.status(200).json({ tasks: projectTasks });
+    return sendSuccessResponse(
+      res,
+      200,
+      "Project tasks fetched successfully",
+      projectTasks
+    );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching project tasks",
+      error.message
+    );
   }
 };
 
@@ -392,12 +432,9 @@ export const updateTask = async (req, res) => {
       }
     });
 
-    res
-      .status(200)
-      .json({ message: "Task updated and changes logged successfully" });
+    return sendSuccessResponse(res, 200, "Task updated successfully");
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    return sendErrorResponse(res, 500, "Error updating task", error.message);
   }
 };
 
@@ -405,9 +442,9 @@ export const deleteTask = async (req, res) => {
   const { taskId } = req.params;
   try {
     await db.delete(tasks).where(eq(tasks.id, Number(taskId)));
-    res.status(200).json({ message: "Task deleted successfully" });
+    return sendSuccessResponse(res, 200, "Task deleted successfully");
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendErrorResponse(res, 500, "Error deleting task", error.message);
   }
 };
 
@@ -424,12 +461,20 @@ export const getProjectMembers = async (req, res) => {
       .from(users)
       .innerJoin(projectUserMapping, eq(users.id, projectUserMapping.userId))
       .where(eq(projectUserMapping.projectId, Number(projectId)));
-    res.status(200).json({ projectMembers });
+
+    return sendSuccessResponse(
+      res,
+      200,
+      "Project members fetched successfully",
+      projectMembers
+    );
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching project members",
-      error: error.message,
-    });
+    return sendErrorResponse(
+      res,
+      500,
+      "Error fetching project members",
+      error.message
+    );
   }
 };
 
@@ -466,9 +511,9 @@ export const createComment = async (req, res) => {
     //   .insert(activityLogs)
     //   .values({ taskId, userId, action: "added a comment" });
 
-    res.status(201).json({ message: "Comment added successfully" });
+    return sendSuccessResponse(res, 201, "Comment added successfully");
   } catch (error) {
-    res.status(500).json({ message: error.message });
+   return sendErrorResponse(res, 500, "Error adding comment", error.message);
   }
 };
 
@@ -476,11 +521,9 @@ export const deleteComment = async (req, res) => {
   const { commentId } = req.params;
   try {
     await db.delete(comments).where(eq(comments.id, commentId));
-    res.status(200).json({ message: "Comment Deleted Succssfully" });
+   return sendSuccessResponse(res, 200, "Comment deleted successfully");
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error deleting comment", error: error.message });
+    return sendErrorResponse(res, 500, "Error deleting comment", error.message);
   }
 };
 
@@ -497,11 +540,9 @@ export const updateComment = async (req, res) => {
       .set({ description: description })
       .where(eq(comments.id, commentId));
 
-    return res.status(200).json({ message: "Comment udated successfully" });
+    return sendSuccessResponse(res, 200, "Comment updated successfully");
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error updating comment", error: error.message });
+    return sendErrorResponse(res, 500, "Error updating comment", error.message);
   }
 };
 
@@ -543,7 +584,13 @@ export const getTaskDetails = async (req, res) => {
       .where(eq(activityLogs.taskId, Number(taskId)))
       .orderBy(desc(activityLogs.createdAt));
 
-    return res.status(200).json({
+    // return res.status(200).json({
+    //   task,
+    //   taskComments,
+    //   logs,
+    // });
+
+    return sendSuccessResponse(res, 200, "Task details fetched successfully", {
       task,
       taskComments,
       logs,

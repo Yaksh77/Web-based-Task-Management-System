@@ -13,6 +13,7 @@ import TaskTable from "../../components/TaskTable";
 import TaskFilters from "../../components/TaskFilters";
 import Pagination from "../../components/Pagination";
 import toast from "react-hot-toast";
+import Loader from "../../components/Loader";
 
 function MyTasks() {
   const user = useAuthStore((state) => state.user);
@@ -32,7 +33,6 @@ function MyTasks() {
     priority: "ALL",
     sortBy: "createdAt",
     sortOrder: "desc",
-    dateType: "createdAt",
   });
 
   const today = new Date().toISOString().split("T")[0];
@@ -79,24 +79,34 @@ function MyTasks() {
   const fetchProjects = async () => {
     try {
       const { data } = await api.get(`/user/user-projects`);
-      setProjects(data.projects);
+
+      setProjects(data.data);
     } catch (error) {
       console.error(error);
     }
   };
 
+
   const fetchMyTasks = async () => {
     setLoading(true);
     try {
+      const queryParams = {
+        page: currentPage,
+        limit: 3,
+        ...filters,
+      };
+      if (searchTerm && searchTerm.trim() !== "") {
+        queryParams.search = searchTerm;
+      }
+
+      if (queryParams.status === "ALL") delete queryParams.status;
+      if (queryParams.priority === "ALL") delete queryParams.priority;
+
       const { data } = await api.get("/user/get-my-tasks", {
-        params: {
-          page: currentPage,
-          limit: 3,
-          ...filters,
-          search: searchTerm,
-        },
+        params: queryParams,
       });
-      setTasks(data.tasks);
+
+      setTasks(data.data);
       setTotalPages(data.pagination.totalPages);
     } catch (error) {
       console.error(error);
@@ -117,7 +127,6 @@ function MyTasks() {
     e.preventDefault();
     if (!validate(formData)) return;
 
-    setLoading(true);
     try {
       const payload = {
         ...formData,
@@ -141,7 +150,6 @@ function MyTasks() {
       console.error(err);
       toast.error("Failed to create task. Please try again.");
     } finally {
-      setLoading(false);
     }
   };
 
@@ -151,7 +159,7 @@ function MyTasks() {
       const { data } = await api.get(
         `/user/user-projects?currentProjectId=${task.projectId}`
       );
-      setProjects(data.projects);
+      setProjects(data.data);
     } catch (error) {
       console.log(error);
     }
@@ -220,7 +228,7 @@ function MyTasks() {
           // whenever the user selects the project in edit modal the members of only that will be fetched
           // beacuse every project has different members
           const { data } = await api.get(`/user/project-members/${pId}`);
-          setProjectMembers(data.projectMembers);
+          setProjectMembers(data.data);
         } catch (err) {
           console.error("Error fetching members", err);
         }
@@ -272,28 +280,34 @@ function MyTasks() {
       />
 
       {/* Task List Table */}
-      <TaskTable
-        tasks={tasks}
-        onEdit={openEditModal}
-        onDelete={handleDeleteTask}
-        visibleColumns={[
-          "title",
-          "priority",
-          "dueDate",
-          "status",
-          "createdBy",
-          "assignedTo",
-          "actions",
-          "viewDetails",
-          "details",
-        ]}
-      />
 
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={(page) => setCurrentPage(page)}
-      />
+      {loading ? (
+        <Loader variant="section" text="Loading your tasks..." />
+      ) : (
+        <>
+          <TaskTable
+            tasks={tasks}
+            onEdit={openEditModal}
+            onDelete={handleDeleteTask}
+            visibleColumns={[
+              "title",
+              "priority",
+              "dueDate",
+              "status",
+              "createdBy",
+              "assignedTo",
+              "actions",
+              "viewDetails",
+              "details",
+            ]}
+          />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />{" "}
+        </>
+      )}
 
       {/* Reusable Modal */}
       {(isCreatedModalOpen || isEditModalOpen) && (
