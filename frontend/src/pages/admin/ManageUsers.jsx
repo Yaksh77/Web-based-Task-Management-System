@@ -17,6 +17,7 @@ function ManageUsers() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [deleteUser, setDeleteUser] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",

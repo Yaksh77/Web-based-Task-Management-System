@@ -6,6 +6,9 @@ import {
   LuBadgeAlert,
   LuLock,
   LuSearch,
+  LuCross,
+  LuFolderClosed,
+  LuX,
 } from "react-icons/lu";
 import api from "../../../api";
 import { useAuthStore } from "../../store/userAuthStore";
@@ -105,6 +108,8 @@ function MyTasks() {
       const { data } = await api.get("/user/get-my-tasks", {
         params: queryParams,
       });
+      console.log(data);
+      
 
       setTasks(data.data);
       setTotalPages(data.pagination.totalPages);
@@ -313,14 +318,26 @@ function MyTasks() {
       {(isCreatedModalOpen || isEditModalOpen) && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl h-full max-h-[80vh] overflow-y-auto no-scrollbar">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+           <div className="flex justify-between items-center mb-2 relative">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
               {isEditModalOpen ? (
-                <LuPencil className="text-indigo-600" />
+                <LuPencil className="text-indigo-600 bg-indigo-50 rounded-full" />
               ) : (
-                <LuPlus className="text-indigo-600" />
+                <LuPlus className="text-indigo-600 bg-indigo-50 rounded-full" />
               )}
               {isEditModalOpen ? "Edit Task Details" : "Create New Task"}
             </h2>
+            <div className=" hover:bg-red-100 p-2 absolute top-0 right-2 cursor-pointer rounded-full text-red-400 transition-all">
+              <LuX  
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setIsEditModalOpen(false);
+                }}
+                size={20}
+              />
+            </div>
+           </div>
+
 
             <form
               onSubmit={isEditModalOpen ? handleUpdateTask : handleCreateTask}
